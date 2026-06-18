@@ -59,17 +59,43 @@ public class Employee : AuditableEntity
         Status = EmploymentStatus.Active;
     }
 
-    public void AssignDepartment(Guid departmentId)
+    public void Update(
+        string firstName,
+        string lastName,
+        string email,
+        string? phoneNumber,
+        Guid departmentId)
+    {
+        if (string.IsNullOrWhiteSpace(firstName))
+            throw new ArgumentException("First name is required.");
+
+        if (string.IsNullOrWhiteSpace(lastName))
+            throw new ArgumentException("Last name is required.");
+
+        if (string.IsNullOrWhiteSpace(email))
+            throw new ArgumentException("Email is required.");
+
+        FirstName = firstName;
+        LastName = lastName;
+        Email = email;
+        PhoneNumber = phoneNumber;
+        DepartmentId = departmentId;
+    }
+
+    public void AssignDepartment(
+        Guid departmentId)
     {
         DepartmentId = departmentId;
     }
 
-    public void UpdatePhoneNumber(string? phoneNumber)
+    public void UpdatePhoneNumber(
+        string? phoneNumber)
     {
         PhoneNumber = phoneNumber;
     }
 
-    public void AssignRole(Guid roleId)
+    public void AssignRole(
+        Guid roleId)
     {
         if (_employeeRoles.Count >= 2)
             throw new InvalidOperationException(

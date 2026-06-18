@@ -29,6 +29,55 @@ public sealed class EmployeesController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> UpdateEmployee(
+        Guid id,
+        UpdateEmployeeCommand command,
+        CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(
+            command with { Id = id },
+            cancellationToken);
+
+        return Ok(result);
+    }
+
+    [HttpPost("{id:guid}/activate")]
+    public async Task<IActionResult> ActivateEmployee(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        await _mediator.Send(
+            new ActivateEmployeeCommand(id),
+            cancellationToken);
+
+        return Ok();
+    }
+
+    [HttpPost("{id:guid}/deactivate")]
+    public async Task<IActionResult> DeactivateEmployee(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        await _mediator.Send(
+            new DeactivateEmployeeCommand(id),
+            cancellationToken);
+
+        return Ok();
+    }
+
+    [HttpPost("{id:guid}/terminate")]
+    public async Task<IActionResult> TerminateEmployee(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        await _mediator.Send(
+            new TerminateEmployeeCommand(id),
+            cancellationToken);
+
+        return Ok();
+    }
+
     [HttpGet]
     public async Task<IActionResult> GetAllEmployees(
         CancellationToken cancellationToken)

@@ -3,21 +3,21 @@ using EmployeeLifecyclePortal.Application.Interfaces;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
-namespace EmployeeLifecyclePortal.Application.Queries.Employees.Handlers;
+namespace EmployeeLifecyclePortal.Application.Commands.Employees;
 
-public sealed class GetEmployeeByIdQueryHandler
-    : IRequestHandler<GetEmployeeByIdQuery, EmployeeDto>
+public sealed class UpdateEmployeeCommandHandler
+    : IRequestHandler<UpdateEmployeeCommand, EmployeeDto>
 {
     private readonly IApplicationDbContext _context;
 
-    public GetEmployeeByIdQueryHandler(
+    public UpdateEmployeeCommandHandler(
         IApplicationDbContext context)
     {
         _context = context;
     }
 
     public async Task<EmployeeDto> Handle(
-        GetEmployeeByIdQuery request,
+        UpdateEmployeeCommand request,
         CancellationToken cancellationToken)
     {
         var employee = await _context.Employees
@@ -30,6 +30,15 @@ public sealed class GetEmployeeByIdQueryHandler
             throw new InvalidOperationException(
                 "Employee not found.");
         }
+
+        employee.Update(
+            request.FirstName,
+            request.LastName,
+            request.Email,
+            request.PhoneNumber,
+            request.DepartmentId);
+
+        await _context.SaveChangesAsync(cancellationToken);
 
         return new EmployeeDto
         {
