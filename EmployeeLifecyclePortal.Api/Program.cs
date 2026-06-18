@@ -1,7 +1,10 @@
 using EmployeeLifecyclePortal.Api.Middleware;
+using EmployeeLifecyclePortal.Application.Behaviors;
 using EmployeeLifecyclePortal.Application.Commands.Employees;
 using EmployeeLifecyclePortal.Application.Interfaces;
 using EmployeeLifecyclePortal.Infrastructure.Persistence;
+using FluentValidation;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,6 +20,13 @@ builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(
         typeof(CreateEmployeeCommand).Assembly);
 });
+
+builder.Services.AddValidatorsFromAssembly(
+    typeof(CreateEmployeeCommand).Assembly);
+
+builder.Services.AddTransient(
+    typeof(IPipelineBehavior<,>),
+    typeof(ValidationBehavior<,>));
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {

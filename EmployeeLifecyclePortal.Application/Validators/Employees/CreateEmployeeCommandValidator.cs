@@ -1,18 +1,30 @@
-using EmployeeLifecyclePortal.Application.Commands.Departments;
+using EmployeeLifecyclePortal.Application.Commands.Employees;
 using FluentValidation;
 
-namespace EmployeeLifecyclePortal.Application.Validators.Departments;
+namespace EmployeeLifecyclePortal.Application.Validators.Employees;
 
-public sealed class CreateDepartmentCommandValidator
-    : AbstractValidator<CreateDepartmentCommand>
+public sealed class CreateEmployeeCommandValidator
+    : AbstractValidator<CreateEmployeeCommand>
 {
-    public CreateDepartmentCommandValidator()
+    public CreateEmployeeCommandValidator()
     {
-        RuleFor(x => x.Name)
+        RuleFor(x => x.EmployeeCode)
+            .NotEmpty()
+            .MaximumLength(50);
+
+        RuleFor(x => x.FirstName)
             .NotEmpty()
             .MaximumLength(100);
 
-        RuleFor(x => x.Description)
-            .MaximumLength(500);
+        RuleFor(x => x.LastName)
+            .NotEmpty()
+            .MaximumLength(100);
+
+        RuleFor(x => x.Email)
+            .NotEmpty()
+            .EmailAddress();
+
+        RuleFor(x => x.DepartmentId)
+            .NotEmpty();
     }
 }
