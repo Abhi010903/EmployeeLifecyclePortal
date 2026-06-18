@@ -1,35 +1,33 @@
 using EmployeeLifecyclePortal.Application.DTOs.Departments;
 using EmployeeLifecyclePortal.Application.Interfaces;
+using EmployeeLifecyclePortal.Domain.Entities;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 
-namespace EmployeeLifecyclePortal.Application.Queries.Departments.Handlers;
+namespace EmployeeLifecyclePortal.Application.Commands.Departments;
 
-public sealed class GetDepartmentByIdQueryHandler
-    : IRequestHandler<GetDepartmentByIdQuery, DepartmentDto>
+public sealed class CreateDepartmentCommandHandler
+    : IRequestHandler<CreateDepartmentCommand, DepartmentDto>
 {
     private readonly IApplicationDbContext _context;
 
-    public GetDepartmentByIdQueryHandler(
+    public CreateDepartmentCommandHandler(
         IApplicationDbContext context)
     {
         _context = context;
     }
 
     public async Task<DepartmentDto> Handle(
-        GetDepartmentByIdQuery request,
+        CreateDepartmentCommand request,
         CancellationToken cancellationToken)
     {
-        var department = await _context.Departments
-            .FirstOrDefaultAsync(
-                x => x.Id == request.Id,
-                cancellationToken);
+        var department = new Department(
+            request.Name,
+            request.Description);
 
-        if (department is null)
-        {
-            throw new InvalidOperationException(
-                "Department not found.");
-        }
+        _context.Departments.Add(department);
+
+        await _context.SaveChangesAsync(
+            cancellationToken);
 
         return new DepartmentDto
         {

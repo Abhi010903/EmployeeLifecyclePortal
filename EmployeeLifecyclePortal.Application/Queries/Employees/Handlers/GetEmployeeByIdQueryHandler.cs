@@ -39,7 +39,11 @@ public sealed class GetEmployeeByIdQueryHandler
             LastName = employee.LastName,
             Email = employee.Email,
             PhoneNumber = employee.PhoneNumber,
-            DepartmentId = employee.DepartmentId
+            DepartmentId = employee.DepartmentId,
+            CreatedAtUtc = employee.CreatedAtUtc,
+            CreatedBy = employee.CreatedBy,
+            LastModifiedAtUtc = employee.LastModifiedAtUtc,
+            LastModifiedBy = employee.LastModifiedBy
         };
     }
 }

@@ -25,7 +25,11 @@ public sealed class GetAllDepartmentsQueryHandler
             {
                 Id = x.Id,
                 Name = x.Name,
-                Description = x.Description
+                Description = x.Description,
+                CreatedAtUtc = x.CreatedAtUtc,
+                CreatedBy = x.CreatedBy,
+                LastModifiedAtUtc = x.LastModifiedAtUtc,
+                LastModifiedBy = x.LastModifiedBy
             })
             .ToListAsync(cancellationToken);
     }

@@ -35,7 +35,11 @@ public sealed class GetRoleByIdQueryHandler
         {
             Id = role.Id,
             Name = role.Name,
-            Description = role.Description
+            Description = role.Description,
+            CreatedAtUtc = role.CreatedAtUtc,
+            CreatedBy = role.CreatedBy,
+            LastModifiedAtUtc = role.LastModifiedAtUtc,
+            LastModifiedBy = role.LastModifiedBy
         };
     }
 }

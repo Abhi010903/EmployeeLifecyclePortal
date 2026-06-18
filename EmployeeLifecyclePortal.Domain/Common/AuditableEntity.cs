@@ -15,6 +15,12 @@ public abstract class AuditableEntity : BaseEntity
         CreatedAtUtc = DateTime.UtcNow;
     }
 
+    public void SetCreationAudit(
+        string createdBy)
+    {
+        CreatedBy = createdBy;
+    }
+
     public void SetModificationAudit(
         string modifiedBy)
     {

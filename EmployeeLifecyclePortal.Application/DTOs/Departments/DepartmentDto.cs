@@ -7,4 +7,12 @@ public sealed class DepartmentDto
     public string Name { get; set; } = string.Empty;
 
     public string Description { get; set; } = string.Empty;
+
+    public DateTime CreatedAtUtc { get; set; }
+
+    public string? CreatedBy { get; set; }
+
+    public DateTime? LastModifiedAtUtc { get; set; }
+
+    public string? LastModifiedBy { get; set; }
 }

@@ -15,4 +15,12 @@ public sealed class EmployeeDto
     public string? PhoneNumber { get; set; }
 
     public Guid DepartmentId { get; set; }
+
+    public DateTime CreatedAtUtc { get; set; }
+
+    public string? CreatedBy { get; set; }
+
+    public DateTime? LastModifiedAtUtc { get; set; }
+
+    public string? LastModifiedBy { get; set; }
 }

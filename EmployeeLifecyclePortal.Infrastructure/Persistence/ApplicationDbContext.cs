@@ -1,4 +1,5 @@
 using EmployeeLifecyclePortal.Application.Interfaces;
+using EmployeeLifecyclePortal.Domain.Common;
 using EmployeeLifecyclePortal.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -29,5 +30,28 @@ public sealed class ApplicationDbContext
             typeof(ApplicationDbContext).Assembly);
 
         base.OnModelCreating(modelBuilder);
+    }
+
+    public override async Task<int> SaveChangesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        foreach (var entry in ChangeTracker
+                     .Entries<AuditableEntity>())
+        {
+            if (entry.State == EntityState.Added)
+            {
+                entry.Entity.SetCreationAudit(
+                    "system");
+            }
+
+            if (entry.State == EntityState.Modified)
+            {
+                entry.Entity.SetModificationAudit(
+                    "system");
+            }
+        }
+
+        return await base.SaveChangesAsync(
+            cancellationToken);
     }
 }
