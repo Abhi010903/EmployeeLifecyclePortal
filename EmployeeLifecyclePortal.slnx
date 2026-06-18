@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="EmployeeLifecyclePortal.Api/EmployeeLifecyclePortal.Api.csproj" />
+  <Project Path="EmployeeLifecyclePortal.Application/EmployeeLifecyclePortal.Application.csproj" />
+  <Project Path="EmployeeLifecyclePortal.Domain/EmployeeLifecyclePortal.Domain.csproj" />
+  <Project Path="EmployeeLifecyclePortal.Infrastructure/EmployeeLifecyclePortal.Infrastructure.csproj" />
+  <Project Path="EmployeeLifecyclePortal.Shared/EmployeeLifecyclePortal.Shared.csproj" />
+</Solution>
