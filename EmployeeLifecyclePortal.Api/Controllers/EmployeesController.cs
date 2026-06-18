@@ -42,6 +42,18 @@ public sealed class EmployeesController : ControllerBase
         return Ok(result);
     }
 
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> DeleteEmployee(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        await _mediator.Send(
+            new DeleteEmployeeCommand(id),
+            cancellationToken);
+
+        return NoContent();
+    }
+
     [HttpPost("{id:guid}/activate")]
     public async Task<IActionResult> ActivateEmployee(
         Guid id,

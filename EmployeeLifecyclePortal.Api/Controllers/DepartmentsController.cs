@@ -29,6 +29,18 @@ public sealed class DepartmentsController : ControllerBase
         return Ok(result);
     }
 
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> DeleteDepartment(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        await _mediator.Send(
+            new DeleteDepartmentCommand(id),
+            cancellationToken);
+
+        return NoContent();
+    }
+
     [HttpGet]
     public async Task<IActionResult> GetAllDepartments(
         CancellationToken cancellationToken)

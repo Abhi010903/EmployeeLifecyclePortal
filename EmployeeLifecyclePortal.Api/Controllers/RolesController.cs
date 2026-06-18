@@ -29,6 +29,18 @@ public sealed class RolesController : ControllerBase
         return Ok(result);
     }
 
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> DeleteRole(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        await _mediator.Send(
+            new DeleteRoleCommand(id),
+            cancellationToken);
+
+        return NoContent();
+    }
+
     [HttpGet]
     public async Task<IActionResult> GetAllRoles(
         CancellationToken cancellationToken)
