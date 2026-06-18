@@ -1,3 +1,4 @@
+using EmployeeLifecyclePortal.Api.Middleware;
 using EmployeeLifecyclePortal.Application.Commands.Employees;
 using EmployeeLifecyclePortal.Application.Interfaces;
 using EmployeeLifecyclePortal.Infrastructure.Persistence;
@@ -28,6 +29,8 @@ builder.Services.AddScoped<IApplicationDbContext>(
     provider => provider.GetRequiredService<ApplicationDbContext>());
 
 var app = builder.Build();
+
+app.UseMiddleware<ApiExceptionMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
