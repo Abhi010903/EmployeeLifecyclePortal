@@ -1,11 +1,6 @@
 using EmployeeLifecyclePortal.Api.Middleware;
-using EmployeeLifecyclePortal.Application.Behaviors;
-using EmployeeLifecyclePortal.Application.Commands.Employees;
-using EmployeeLifecyclePortal.Application.Interfaces;
-using EmployeeLifecyclePortal.Infrastructure.Persistence;
-using FluentValidation;
-using MediatR;
-using Microsoft.EntityFrameworkCore;
+using EmployeeLifecyclePortal.Application;
+using EmployeeLifecyclePortal.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,28 +10,10 @@ builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddMediatR(cfg =>
-{
-    cfg.RegisterServicesFromAssembly(
-        typeof(CreateEmployeeCommand).Assembly);
-});
+builder.Services.AddApplication();
 
-builder.Services.AddValidatorsFromAssembly(
-    typeof(CreateEmployeeCommand).Assembly);
-
-builder.Services.AddTransient(
-    typeof(IPipelineBehavior<,>),
-    typeof(ValidationBehavior<,>));
-
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-{
-    options.UseSqlServer(
-        builder.Configuration.GetConnectionString(
-            "DefaultConnection"));
-});
-
-builder.Services.AddScoped<IApplicationDbContext>(
-    provider => provider.GetRequiredService<ApplicationDbContext>());
+builder.Services.AddInfrastructure(
+    builder.Configuration);
 
 var app = builder.Build();
 
