@@ -1,5 +1,7 @@
 using EmployeeLifecyclePortal.Application.Interfaces;
+using EmployeeLifecyclePortal.Application.Interfaces.Repositories;
 using EmployeeLifecyclePortal.Infrastructure.Persistence;
+using EmployeeLifecyclePortal.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,6 +24,15 @@ public static class DependencyInjection
         services.AddScoped<IApplicationDbContext>(
             provider =>
                 provider.GetRequiredService<ApplicationDbContext>());
+
+        services.AddScoped<IEmployeeRepository,
+            EmployeeRepository>();
+
+        services.AddScoped<IDepartmentRepository,
+            DepartmentRepository>();
+
+        services.AddScoped<IRoleRepository,
+            RoleRepository>();
 
         return services;
     }

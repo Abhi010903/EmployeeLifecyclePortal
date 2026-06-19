@@ -1,5 +1,6 @@
 using EmployeeLifecyclePortal.Application.DTOs.Employees;
 using EmployeeLifecyclePortal.Application.Interfaces;
+using EmployeeLifecyclePortal.Application.Interfaces.Repositories;
 using EmployeeLifecyclePortal.Domain.Entities;
 using MediatR;
 
@@ -8,11 +9,14 @@ namespace EmployeeLifecyclePortal.Application.Commands.Employees;
 public sealed class CreateEmployeeCommandHandler
     : IRequestHandler<CreateEmployeeCommand, EmployeeDto>
 {
+    private readonly IEmployeeRepository _employeeRepository;
     private readonly IApplicationDbContext _context;
 
     public CreateEmployeeCommandHandler(
+        IEmployeeRepository employeeRepository,
         IApplicationDbContext context)
     {
+        _employeeRepository = employeeRepository;
         _context = context;
     }
 
@@ -28,9 +32,12 @@ public sealed class CreateEmployeeCommandHandler
             request.PhoneNumber,
             request.DepartmentId);
 
-        _context.Employees.Add(employee);
+        await _employeeRepository.AddAsync(
+            employee,
+            cancellationToken);
 
-        await _context.SaveChangesAsync(cancellationToken);
+        await _context.SaveChangesAsync(
+            cancellationToken);
 
         return new EmployeeDto
         {

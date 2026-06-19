@@ -1,5 +1,6 @@
 using EmployeeLifecyclePortal.Application.DTOs.Departments;
 using EmployeeLifecyclePortal.Application.Interfaces;
+using EmployeeLifecyclePortal.Application.Interfaces.Repositories;
 using EmployeeLifecyclePortal.Domain.Entities;
 using MediatR;
 
@@ -8,11 +9,14 @@ namespace EmployeeLifecyclePortal.Application.Commands.Departments;
 public sealed class CreateDepartmentCommandHandler
     : IRequestHandler<CreateDepartmentCommand, DepartmentDto>
 {
+    private readonly IDepartmentRepository _departmentRepository;
     private readonly IApplicationDbContext _context;
 
     public CreateDepartmentCommandHandler(
+        IDepartmentRepository departmentRepository,
         IApplicationDbContext context)
     {
+        _departmentRepository = departmentRepository;
         _context = context;
     }
 
@@ -24,7 +28,9 @@ public sealed class CreateDepartmentCommandHandler
             request.Name,
             request.Description);
 
-        _context.Departments.Add(department);
+        await _departmentRepository.AddAsync(
+            department,
+            cancellationToken);
 
         await _context.SaveChangesAsync(
             cancellationToken);
