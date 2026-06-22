@@ -1,6 +1,7 @@
 using EmployeeLifecyclePortal.Application.Interfaces;
 using EmployeeLifecyclePortal.Domain.Common;
 using EmployeeLifecyclePortal.Domain.Entities;
+using EmployeeLifecyclePortal.Domain.Entities.Auth;
 using Microsoft.EntityFrameworkCore;
 
 namespace EmployeeLifecyclePortal.Infrastructure.Persistence;
@@ -22,6 +23,9 @@ public sealed class ApplicationDbContext
     public DbSet<Role> Roles => Set<Role>();
 
     public DbSet<EmployeeRole> EmployeeRoles => Set<EmployeeRole>();
+
+    public DbSet<ApplicationUser> ApplicationUsers
+        => Set<ApplicationUser>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)

@@ -1,7 +1,9 @@
 using EmployeeLifecyclePortal.Application.Interfaces;
 using EmployeeLifecyclePortal.Application.Interfaces.Repositories;
+using EmployeeLifecyclePortal.Application.Interfaces.Repositories.Auth;
 using EmployeeLifecyclePortal.Infrastructure.Persistence;
 using EmployeeLifecyclePortal.Infrastructure.Repositories;
+using EmployeeLifecyclePortal.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -36,6 +38,12 @@ public static class DependencyInjection
 
         services.AddScoped<IRoleRepository,
             RoleRepository>();
+
+        services.AddScoped<IUserRepository,
+            UserRepository>();
+
+        services.AddScoped<IJwtTokenService,
+            JwtTokenService>();
 
         return services;
     }
