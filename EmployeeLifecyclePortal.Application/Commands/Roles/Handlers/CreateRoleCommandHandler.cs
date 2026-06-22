@@ -10,14 +10,14 @@ public sealed class CreateRoleCommandHandler
     : IRequestHandler<CreateRoleCommand, RoleDto>
 {
     private readonly IRoleRepository _roleRepository;
-    private readonly IApplicationDbContext _context;
+    private readonly IUnitOfWork _unitOfWork;
 
     public CreateRoleCommandHandler(
         IRoleRepository roleRepository,
-        IApplicationDbContext context)
+        IUnitOfWork unitOfWork)
     {
         _roleRepository = roleRepository;
-        _context = context;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<RoleDto> Handle(
@@ -32,7 +32,7 @@ public sealed class CreateRoleCommandHandler
             role,
             cancellationToken);
 
-        await _context.SaveChangesAsync(
+        await _unitOfWork.CommitAsync(
             cancellationToken);
 
         return new RoleDto

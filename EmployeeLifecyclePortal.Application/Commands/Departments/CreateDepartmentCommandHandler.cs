@@ -10,14 +10,14 @@ public sealed class CreateDepartmentCommandHandler
     : IRequestHandler<CreateDepartmentCommand, DepartmentDto>
 {
     private readonly IDepartmentRepository _departmentRepository;
-    private readonly IApplicationDbContext _context;
+    private readonly IUnitOfWork _unitOfWork;
 
     public CreateDepartmentCommandHandler(
         IDepartmentRepository departmentRepository,
-        IApplicationDbContext context)
+        IUnitOfWork unitOfWork)
     {
         _departmentRepository = departmentRepository;
-        _context = context;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<DepartmentDto> Handle(
@@ -32,7 +32,7 @@ public sealed class CreateDepartmentCommandHandler
             department,
             cancellationToken);
 
-        await _context.SaveChangesAsync(
+        await _unitOfWork.CommitAsync(
             cancellationToken);
 
         return new DepartmentDto

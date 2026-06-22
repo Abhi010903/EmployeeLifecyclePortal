@@ -10,14 +10,14 @@ public sealed class CreateEmployeeCommandHandler
     : IRequestHandler<CreateEmployeeCommand, EmployeeDto>
 {
     private readonly IEmployeeRepository _employeeRepository;
-    private readonly IApplicationDbContext _context;
+    private readonly IUnitOfWork _unitOfWork;
 
     public CreateEmployeeCommandHandler(
         IEmployeeRepository employeeRepository,
-        IApplicationDbContext context)
+        IUnitOfWork unitOfWork)
     {
         _employeeRepository = employeeRepository;
-        _context = context;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<EmployeeDto> Handle(
@@ -36,7 +36,7 @@ public sealed class CreateEmployeeCommandHandler
             employee,
             cancellationToken);
 
-        await _context.SaveChangesAsync(
+        await _unitOfWork.CommitAsync(
             cancellationToken);
 
         return new EmployeeDto
