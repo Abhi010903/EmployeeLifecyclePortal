@@ -1,5 +1,6 @@
 using EmployeeLifecyclePortal.Application.Behaviors;
 using EmployeeLifecyclePortal.Application.Commands.Employees;
+using EmployeeLifecyclePortal.Application.Services.Auth;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;

@@ -1,12 +1,15 @@
+using EmployeeLifecyclePortal.Application.Authorization;
 using EmployeeLifecyclePortal.Application.Commands.Departments;
 using EmployeeLifecyclePortal.Application.Queries.Departments;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EmployeeLifecyclePortal.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Policy = Permissions.Employee)]
 public sealed class DepartmentsController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -18,6 +21,7 @@ public sealed class DepartmentsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = Permissions.Manager)]
     public async Task<IActionResult> CreateDepartment(
         CreateDepartmentCommand command,
         CancellationToken cancellationToken)
@@ -30,6 +34,7 @@ public sealed class DepartmentsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Policy = Permissions.Admin)]
     public async Task<IActionResult> DeleteDepartment(
         Guid id,
         CancellationToken cancellationToken)

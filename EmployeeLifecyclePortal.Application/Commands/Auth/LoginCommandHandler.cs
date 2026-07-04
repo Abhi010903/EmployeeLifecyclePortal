@@ -1,7 +1,8 @@
-using BCrypt.Net;
 using EmployeeLifecyclePortal.Application.DTOs.Auth;
+using EmployeeLifecyclePortal.Application.Exceptions.Auth;
 using EmployeeLifecyclePortal.Application.Interfaces;
 using EmployeeLifecyclePortal.Application.Interfaces.Repositories.Auth;
+using EmployeeLifecyclePortal.Application.Services.Auth;
 using MediatR;
 
 namespace EmployeeLifecyclePortal.Application.Commands.Auth;
@@ -10,14 +11,19 @@ public sealed class LoginCommandHandler
     : IRequestHandler<LoginCommand, AuthResponseDto>
 {
     private readonly IUserRepository _userRepository;
+
     private readonly IJwtTokenService _jwtTokenService;
+
+    private readonly IPasswordHasher _passwordHasher;
 
     public LoginCommandHandler(
         IUserRepository userRepository,
-        IJwtTokenService jwtTokenService)
+        IJwtTokenService jwtTokenService,
+        IPasswordHasher passwordHasher)
     {
         _userRepository = userRepository;
         _jwtTokenService = jwtTokenService;
+        _passwordHasher = passwordHasher;
     }
 
     public async Task<AuthResponseDto> Handle(
@@ -31,19 +37,17 @@ public sealed class LoginCommandHandler
 
         if (user is null)
         {
-            throw new UnauthorizedAccessException(
-                "Invalid credentials.");
+            throw new InvalidCredentialsException();
         }
 
-        var validPassword =
-            BCrypt.Net.BCrypt.Verify(
+        var passwordValid =
+            _passwordHasher.Verify(
                 request.Password,
                 user.PasswordHash);
 
-        if (!validPassword)
+        if (!passwordValid)
         {
-            throw new UnauthorizedAccessException(
-                "Invalid credentials.");
+            throw new InvalidCredentialsException();
         }
 
         var token =

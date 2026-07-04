@@ -1,12 +1,15 @@
+using EmployeeLifecyclePortal.Application.Authorization;
 using EmployeeLifecyclePortal.Application.Commands.Roles;
 using EmployeeLifecyclePortal.Application.Queries.Roles;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EmployeeLifecyclePortal.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Policy = Permissions.Employee)]
 public sealed class RolesController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -18,6 +21,7 @@ public sealed class RolesController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = Permissions.Admin)]
     public async Task<IActionResult> CreateRole(
         CreateRoleCommand command,
         CancellationToken cancellationToken)
@@ -30,6 +34,7 @@ public sealed class RolesController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Policy = Permissions.Admin)]
     public async Task<IActionResult> DeleteRole(
         Guid id,
         CancellationToken cancellationToken)

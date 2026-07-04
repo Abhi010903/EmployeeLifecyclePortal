@@ -1,3 +1,5 @@
+using EmployeeLifecyclePortal.Application.Exceptions.Auth;
+using EmployeeLifecyclePortal.Application.Exceptions;
 using System.Net;
 using System.Text.Json;
 
@@ -20,25 +22,49 @@ public sealed class ApiExceptionMiddleware
         {
             await _next(context);
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            context.Response.StatusCode =
-                (int)HttpStatusCode.InternalServerError;
+            await HandleExceptionAsync(
+                context,
+                exception);
+        }
+    }
 
-            context.Response.ContentType =
-                "application/json";
+    private static Task HandleExceptionAsync(
+        HttpContext context,
+        Exception exception)
+    {
+        context.Response.ContentType =
+            "application/json";
 
-            var result = JsonSerializer.Serialize(
+        context.Response.StatusCode =
+            exception switch
+            {
+                ValidationException =>
+                    (int)HttpStatusCode.BadRequest,
+
+                UserAlreadyExistsException =>
+                    (int)HttpStatusCode.Conflict,
+
+                InvalidCredentialsException =>
+                    (int)HttpStatusCode.Unauthorized,
+
+                _ =>
+                    (int)HttpStatusCode.InternalServerError
+            };
+
+        var response =
+            JsonSerializer.Serialize(
                 new
                 {
-                    Exception = ex.ToString(),
-                    Message = ex.Message,
-                    InnerException =
-                        ex.InnerException?.ToString()
+                    StatusCode =
+                        context.Response.StatusCode,
+
+                    Message =
+                        exception.Message
                 });
 
-            await context.Response.WriteAsync(
-                result);
-        }
+        return context.Response.WriteAsync(
+            response);
     }
 }

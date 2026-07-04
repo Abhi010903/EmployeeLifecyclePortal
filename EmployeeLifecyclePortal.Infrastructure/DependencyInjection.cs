@@ -1,9 +1,10 @@
 using EmployeeLifecyclePortal.Application.Interfaces;
 using EmployeeLifecyclePortal.Application.Interfaces.Repositories;
 using EmployeeLifecyclePortal.Application.Interfaces.Repositories.Auth;
+using EmployeeLifecyclePortal.Application.Services.Auth;
 using EmployeeLifecyclePortal.Infrastructure.Persistence;
 using EmployeeLifecyclePortal.Infrastructure.Repositories;
-using EmployeeLifecyclePortal.Infrastructure.Services;
+using EmployeeLifecyclePortal.Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,23 +28,19 @@ public static class DependencyInjection
             provider =>
                 provider.GetRequiredService<ApplicationDbContext>());
 
-        services.AddScoped<IUnitOfWork,
-            UnitOfWork>();
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
 
-        services.AddScoped<IEmployeeRepository,
-            EmployeeRepository>();
+        services.AddScoped<IEmployeeRepository, EmployeeRepository>();
 
-        services.AddScoped<IDepartmentRepository,
-            DepartmentRepository>();
+        services.AddScoped<IDepartmentRepository, DepartmentRepository>();
 
-        services.AddScoped<IRoleRepository,
-            RoleRepository>();
+        services.AddScoped<IRoleRepository, RoleRepository>();
 
-        services.AddScoped<IUserRepository,
-            UserRepository>();
+        services.AddScoped<IUserRepository, UserRepository>();
 
-        services.AddScoped<IJwtTokenService,
-            JwtTokenService>();
+        services.AddScoped<IJwtTokenService, JwtTokenService>();
+
+        services.AddScoped<IPasswordHasher, PasswordHasher>();
 
         return services;
     }

@@ -1,9 +1,10 @@
+using System.Text;
 using EmployeeLifecyclePortal.Api.Middleware;
 using EmployeeLifecyclePortal.Application;
+using EmployeeLifecyclePortal.Application.Authorization;
 using EmployeeLifecyclePortal.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,7 +40,20 @@ builder.Services
             };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(
+        Permissions.Admin,
+        policy => policy.RequireRole("Admin"));
+
+    options.AddPolicy(
+        Permissions.Manager,
+        policy => policy.RequireRole("Admin", "Manager"));
+
+    options.AddPolicy(
+        Permissions.Employee,
+        policy => policy.RequireAuthenticatedUser());
+});
 
 builder.Services.AddApplication();
 
@@ -53,7 +67,6 @@ app.UseMiddleware<ApiExceptionMiddleware>();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-
     app.UseSwaggerUI();
 }
 

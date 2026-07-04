@@ -5,7 +5,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
-namespace EmployeeLifecyclePortal.Infrastructure.Services;
+namespace EmployeeLifecyclePortal.Infrastructure.Security;
 
 public sealed class JwtTokenService
     : IJwtTokenService

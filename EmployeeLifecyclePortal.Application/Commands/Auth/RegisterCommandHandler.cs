@@ -1,7 +1,8 @@
-using BCrypt.Net;
 using EmployeeLifecyclePortal.Application.DTOs.Auth;
+using EmployeeLifecyclePortal.Application.Exceptions.Auth;
 using EmployeeLifecyclePortal.Application.Interfaces;
 using EmployeeLifecyclePortal.Application.Interfaces.Repositories.Auth;
+using EmployeeLifecyclePortal.Application.Services.Auth;
 using EmployeeLifecyclePortal.Domain.Entities.Auth;
 using MediatR;
 
@@ -11,17 +12,23 @@ public sealed class RegisterCommandHandler
     : IRequestHandler<RegisterCommand, AuthResponseDto>
 {
     private readonly IUserRepository _userRepository;
+
     private readonly IUnitOfWork _unitOfWork;
+
     private readonly IJwtTokenService _jwtTokenService;
+
+    private readonly IPasswordHasher _passwordHasher;
 
     public RegisterCommandHandler(
         IUserRepository userRepository,
         IUnitOfWork unitOfWork,
-        IJwtTokenService jwtTokenService)
+        IJwtTokenService jwtTokenService,
+        IPasswordHasher passwordHasher)
     {
         _userRepository = userRepository;
         _unitOfWork = unitOfWork;
         _jwtTokenService = jwtTokenService;
+        _passwordHasher = passwordHasher;
     }
 
     public async Task<AuthResponseDto> Handle(
@@ -35,12 +42,12 @@ public sealed class RegisterCommandHandler
 
         if (existingUser is not null)
         {
-            throw new InvalidOperationException(
-                "User already exists.");
+            throw new UserAlreadyExistsException(
+                request.Email);
         }
 
         var passwordHash =
-            BCrypt.Net.BCrypt.HashPassword(
+            _passwordHasher.Hash(
                 request.Password);
 
         var user =
