@@ -45,13 +45,34 @@ public sealed class EmployeeConfiguration
         builder.Property(x => x.CreatedAtUtc)
             .IsRequired();
 
+        // ── Department relationship ────────────────────────────────────────
         builder.HasOne<Department>()
             .WithMany(x => x.Employees)
             .HasForeignKey(x => x.DepartmentId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // ── Manager relationship (self-referencing) ────────────────────────
+        builder.HasOne(x => x.Manager)
+            .WithMany()
+            .HasForeignKey(x => x.ManagerId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // ── Roles relationship ─────────────────────────────────────────────
         builder.HasMany(x => x.EmployeeRoles)
             .WithOne()
+            .HasForeignKey(x => x.EmployeeId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // ── Timeline events relationship ───────────────────────────────────
+        builder.HasMany(x => x.Timelines)
+            .WithOne(x => x.Employee)
+            .HasForeignKey(x => x.EmployeeId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // ── Documents relationship ────────────────────────────────────────
+        builder.HasMany(x => x.Documents)
+            .WithOne(x => x.Employee)
             .HasForeignKey(x => x.EmployeeId)
             .OnDelete(DeleteBehavior.Cascade);
     }

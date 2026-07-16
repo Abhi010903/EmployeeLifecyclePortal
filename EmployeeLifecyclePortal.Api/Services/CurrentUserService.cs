@@ -48,4 +48,15 @@ public sealed class CurrentUserService
         UserPrincipal.FindFirst(
             ClaimTypes.Role)?.Value
         ?? string.Empty;
+
+    public string? GetCurrentUserId()
+    {
+        if (!IsAuthenticated)
+        {
+            return null;
+        }
+
+        var userIdGuid = UserId;
+        return userIdGuid == Guid.Empty ? null : userIdGuid.ToString();
+    }
 }

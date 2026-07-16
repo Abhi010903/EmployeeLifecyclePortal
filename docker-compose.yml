@@ -1,0 +1,46 @@
+# Sprint 32: Docker Compose - Local development environment
+
+version: '3.8'
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:latest
+    container_name: elp-sqlserver
+    environment:
+      SA_PASSWORD: "Password@123"
+      ACCEPT_EULA: "Y"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqldata:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P Password@123 -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: elp-api
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__DefaultConnection: "Server=sqlserver;Database=EmployeeLifecyclePortalDb;User Id=sa;Password=Password@123;TrustServerCertificate=True;MultipleActiveResultSets=true"
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_URLS: "http://+:80"
+    ports:
+      - "5000:80"
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - elp-network
+
+volumes:
+  sqldata:
+
+networks:
+  elp-network:
+    driver: bridge

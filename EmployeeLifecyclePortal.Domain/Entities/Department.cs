@@ -10,6 +10,12 @@ public class Department : AuditableEntity
 
     public string Description { get; private set; } = string.Empty;
 
+    public Guid? HeadOfDepartmentId { get; private set; }
+
+    public int TotalBudget { get; private set; }
+
+    public int AverageSalary { get; private set; }
+
     public IReadOnlyCollection<Employee> Employees
         => _employees.AsReadOnly();
 
@@ -32,6 +38,16 @@ public class Department : AuditableEntity
         string description)
     {
         Description = description;
+    }
+
+    public void SetHeadOfDepartment(Guid employeeId)
+    {
+        HeadOfDepartmentId = employeeId;
+    }
+
+    public void UpdateBudget(int budget)
+    {
+        TotalBudget = budget;
     }
 
     public void AddEmployee(Employee employee)
