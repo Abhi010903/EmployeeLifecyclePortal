@@ -9,11 +9,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace EmployeeLifecyclePortal.Infrastructure.Persistence.Migrations
+namespace EmployeeLifecyclePortal.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260716033746_AddAllHRMSModules")]
-    partial class AddAllHRMSModules
+    [Migration("20260716044248_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
