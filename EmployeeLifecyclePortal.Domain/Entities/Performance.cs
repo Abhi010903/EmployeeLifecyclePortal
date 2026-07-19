@@ -58,6 +58,11 @@ public class PerformanceReview : AuditableEntity
         Rating = Math.Min(5, rating);
     }
 
+    public void SetComments(string comments)
+    {
+        Comments = comments;
+    }
+
     public void Submit()
     {
         Status = "Submitted";

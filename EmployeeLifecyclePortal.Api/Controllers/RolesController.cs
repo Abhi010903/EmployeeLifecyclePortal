@@ -33,6 +33,20 @@ public sealed class RolesController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPut("{id:guid}")]
+    [Authorize(Policy = Permissions.Admin)]
+    public async Task<IActionResult> UpdateRole(
+        Guid id,
+        UpdateRoleCommand command,
+        CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(
+            command with { Id = id },
+            cancellationToken);
+
+        return Ok(result);
+    }
+
     [HttpDelete("{id:guid}")]
     [Authorize(Policy = Permissions.Admin)]
     public async Task<IActionResult> DeleteRole(

@@ -10,8 +10,8 @@ public class Asset : AuditableEntity
     public string AssetType { get; private set; } = string.Empty;
     public string SerialNumber { get; private set; } = string.Empty;
     public decimal PurchaseValue { get; private set; }
-    public string Status { get; private set; } = "Available";
-    public string Condition { get; private set; } = "Good";
+    public string Status { get; set; } = "Available";
+    public string Condition { get; set; } = "Good";
     public DateTime PurchaseDateUtc { get; private set; }
 
     private Asset() { }
@@ -44,7 +44,7 @@ public class AssetAssignment : AuditableEntity
     public DateTime AssignedDateUtc { get; private set; }
     public DateTime? ReturnedDateUtc { get; private set; }
     public string Status { get; private set; } = "Active";
-    public string? Notes { get; private set; }
+    public string? Notes { get; set; }
     public Employee? Employee { get; private set; }
     public Asset? Asset { get; private set; }
 

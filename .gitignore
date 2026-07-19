@@ -1,33 +1,85 @@
 # Build outputs
 bin/
 obj/
+dist/
+build/
 
 # Visual Studio
 .vs/
 *.user
 *.suo
+*.sln.iml
 
 # Rider
 .idea/
+*.iml
 
 # VS Code
 .vscode/
+*.code-workspace
 
 # Test results
 TestResults/
+coverage/
+.nyc_output/
 
 # NuGet
 *.nupkg
+.nuget/
 
 # Logs
 *.log
+logs/
 
 # Publish output
 publish/
+PublishProfiles/
+
+# Environment
+.env
+.env.local
+.env.*.local
 
 # OS files
 Thumbs.db
 .DS_Store
+*.swp
+*.swo
+*~
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+.pnp
+.pnp.js
+
+# Frontend build artifacts
+frontend/dist
+frontend/.next
+frontend/out
+
+# Database
+*.mdf
+*.ldf
+*.db
 
 # Archives
 *.zip
+*.rar
+*.tar.gz
+
+# macOS
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+.wsl/
+
+# Misc
+*.bak
+*.orig
+.cache/
+temp/
+tmp/

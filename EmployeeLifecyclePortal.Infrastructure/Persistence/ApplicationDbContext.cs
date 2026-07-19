@@ -82,6 +82,15 @@ public sealed class ApplicationDbContext
     public DbSet<DashboardWidget> DashboardWidgets => Set<DashboardWidget>();
     public DbSet<DepartmentAnalytics> DepartmentAnalytics => Set<DepartmentAnalytics>();
 
+    // Sprint 31: Settings
+    public DbSet<CompanyProfile> CompanyProfiles => Set<CompanyProfile>();
+    public DbSet<UserSettings> UserSettings => Set<UserSettings>();
+    public DbSet<OrganizationSettings> OrganizationSettings => Set<OrganizationSettings>();
+    public DbSet<HolidayCalendar> HolidayCalendars => Set<HolidayCalendar>();
+    public DbSet<Shift> Shifts => Set<Shift>();
+    public DbSet<WorkingHours> WorkingHours => Set<WorkingHours>();
+    public DbSet<EmailConfiguration> EmailConfigurations => Set<EmailConfiguration>();
+
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {

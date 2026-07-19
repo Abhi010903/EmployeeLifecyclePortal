@@ -8,7 +8,12 @@ import ProtectedRoute from '@/utils/ProtectedRoute'
 import LoginPage from '@/pages/LoginPage'
 import DashboardPage from '@/pages/DashboardPage'
 import EmployeesPage from '@/pages/EmployeesPage'
+import EmployeeDetailsPage from '@/pages/EmployeeDetailsPage'
+import EmployeeEditPage from '@/pages/EmployeeEditPage'
 import DepartmentsPage from '@/pages/DepartmentsPage'
+import DepartmentDetailsPage from '@/pages/DepartmentDetailsPage'
+import RolesPage from '@/pages/RolesPage'
+import RoleDetailsPage from '@/pages/RoleDetailsPage'
 import AttendancePage from '@/pages/AttendancePage'
 import LeavePage from '@/pages/LeavePage'
 import PayrollPage from '@/pages/PayrollPage'
@@ -47,10 +52,55 @@ export default function App() {
           />
 
           <Route
+            path="/employees/:id"
+            element={
+              <ProtectedRoute>
+                <EmployeeDetailsPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/employees/:id/edit"
+            element={
+              <ProtectedRoute>
+                <EmployeeEditPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
             path="/departments"
             element={
               <ProtectedRoute>
                 <DepartmentsPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/departments/:id"
+            element={
+              <ProtectedRoute>
+                <DepartmentDetailsPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/roles"
+            element={
+              <ProtectedRoute>
+                <RolesPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/roles/:id"
+            element={
+              <ProtectedRoute>
+                <RoleDetailsPage />
               </ProtectedRoute>
             }
           />

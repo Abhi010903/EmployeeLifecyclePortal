@@ -1,45 +1,61 @@
-# Sprint 32: Docker Compose - Local development environment
-
 version: '3.8'
 
 services:
-  sqlserver:
-    image: mcr.microsoft.com/mssql/server:latest
-    container_name: elp-sqlserver
+  # SQL Server Database
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
-      SA_PASSWORD: "Password@123"
       ACCEPT_EULA: "Y"
+      SA_PASSWORD: "Your@SecurePass123"
+      MSSQL_PID: "Express"
     ports:
       - "1433:1433"
     volumes:
-      - sqldata:/var/opt/mssql
+      - sqlserver_data:/var/opt/mssql
+    networks:
+      - elp-network
     healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P Password@123 -Q 'SELECT 1' || exit 1"]
+      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'Your@SecurePass123' -Q 'SELECT 1'"]
       interval: 10s
-      timeout: 5s
-      retries: 5
+      timeout: 3s
+      retries: 40
 
+  # .NET API
   api:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: elp-api
-    depends_on:
-      sqlserver:
-        condition: service_healthy
-    environment:
-      ConnectionStrings__DefaultConnection: "Server=sqlserver;Database=EmployeeLifecyclePortalDb;User Id=sa;Password=Password@123;TrustServerCertificate=True;MultipleActiveResultSets=true"
-      ASPNETCORE_ENVIRONMENT: "Development"
-      ASPNETCORE_URLS: "http://+:80"
     ports:
       - "5000:80"
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Production"
+      ConnectionStrings__DefaultConnection: "Server=mssql;Database=EmployeeLifecyclePortalDb;User Id=sa;Password=Your@SecurePass123;Encrypt=false;"
+      Jwt__Secret: "your-secret-key-min-32-characters-required-12345"
+      Jwt__Issuer: "EmployeeLifecyclePortal"
+      Jwt__Audience: "EmployeeLifecyclePortalClient"
+    depends_on:
+      mssql:
+        condition: service_healthy
+    networks:
+      - elp-network
+    restart: unless-stopped
+
+  # Frontend (optional)
+  frontend:
+    image: node:18-alpine
+    working_dir: /app
     volumes:
-      - ./logs:/app/logs
+      - ./frontend:/app
+    ports:
+      - "3000:3000"
+    environment:
+      REACT_APP_API_URL: "http://api:80"
+    command: npm run dev
     networks:
       - elp-network
 
 volumes:
-  sqldata:
+  sqlserver_data:
 
 networks:
   elp-network:

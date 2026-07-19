@@ -33,6 +33,20 @@ public sealed class DepartmentsController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPut("{id:guid}")]
+    [Authorize(Policy = Permissions.Manager)]
+    public async Task<IActionResult> UpdateDepartment(
+        Guid id,
+        UpdateDepartmentCommand command,
+        CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(
+            command with { Id = id },
+            cancellationToken);
+
+        return Ok(result);
+    }
+
     [HttpDelete("{id:guid}")]
     [Authorize(Policy = Permissions.Admin)]
     public async Task<IActionResult> DeleteDepartment(
