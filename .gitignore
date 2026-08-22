@@ -83,5 +83,3 @@ frontend/out
 .cache/
 temp/
 tmp/
-# Runtime uploaded employee documents
-EmployeeLifecyclePortal.Api/Uploads/**

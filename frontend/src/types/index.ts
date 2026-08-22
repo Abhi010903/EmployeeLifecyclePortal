@@ -250,6 +250,9 @@ export interface SalaryStructureDto {
   employeeId: string
   employeeName?: string
   baseSalary: number
+  hra?: number
+  specialAllowance?: number
+  conveyanceAllowance?: number
   currency: string
   effectiveFromUtc: string
   effectiveToUtc?: string
@@ -277,20 +280,87 @@ export interface PayslipDto {
   id: string
   employeeId: string
   employeeName?: string
+  employeeCode?: string
+  departmentName?: string
+  roleName?: string
   month: number
   year: number
-  baseSalary: number
-  grossSalary?: number
-  allowances: number
+  basicSalary?: number
+  baseSalary?: number
+  hra?: number
+  allowances?: number
+  bonusPay?: number
+  overtimePay?: number
+  grossSalary: number
+  pfDeduction?: number
+  esiDeduction?: number
+  tdsDeduction?: number
   deductions: number
+  reimbursementsAmount?: number
   netSalary: number
-  status: 'Generated' | 'Paid' | 'Cancelled' | 'Processed' | string
+  workingDays?: number
+  presentDays?: number
+  paidLeaveDays?: number
+  unpaidLeaveDays?: number
+  status: 'Draft' | 'Generated' | 'Calculated' | 'UnderReview' | 'Approved' | 'Paid' | string
+  paymentMethod?: string
+  paymentDateUtc?: string
+  remarks?: string
   generatedDateUtc: string
   paidDateUtc?: string
   createdAtUtc: string
   createdBy?: string
   lastModifiedAtUtc?: string
   lastModifiedBy?: string
+}
+
+export interface ReimbursementDto {
+  id: string
+  employeeId: string
+  employeeName?: string
+  amount: number
+  category: 'Travel' | 'Food' | 'Internet' | 'Medical' | 'Equipment' | 'Training' | 'Other' | string
+  description: string
+  receiptUrl?: string
+  status: 'Pending' | 'Approved' | 'Rejected' | 'Paid' | string
+  approvedByName?: string
+  approvedAtUtc?: string
+  rejectionReason?: string
+  payrollPeriod?: string
+  createdAtUtc: string
+  createdBy?: string
+}
+
+export interface CreateReimbursementDto {
+  employeeId: string
+  amount: number
+  category: string
+  description: string
+  receiptUrl?: string
+}
+
+export interface DepartmentPayrollDto {
+  departmentName: string
+  employeeCount: number
+  totalGross: number
+  totalNet: number
+}
+
+export interface PayrollSummaryDto {
+  month: number
+  year: number
+  totalEmployees: number
+  processedCount: number
+  totalGrossSalary: number
+  totalDeductions: number
+  totalPf: number
+  totalEsi: number
+  totalTds: number
+  totalReimbursements: number
+  totalNetSalary: number
+  status: string
+  departmentBreakdown: DepartmentPayrollDto[]
+  payslips: PayslipDto[]
 }
 
 // Asset types

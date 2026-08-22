@@ -1,7 +1,28 @@
 import { apiClient } from './client'
-import { SalaryStructureDto, PayslipDto } from '@/types'
+import {
+  SalaryStructureDto,
+  PayslipDto,
+  PayrollSummaryDto,
+  ReimbursementDto,
+  CreateReimbursementDto,
+} from '@/types'
 
 export const payrollApi = {
+  // Summary & Runs
+  getSummary: (month?: number, year?: number) => {
+    const params = new URLSearchParams()
+    if (month) params.append('month', month.toString())
+    if (year) params.append('year', year.toString())
+    const query = params.toString() ? `?${params.toString()}` : ''
+    return apiClient.get<PayrollSummaryDto>(`/payroll/summary${query}`)
+  },
+
+  processPayrollRun: (month: number, year: number) =>
+    apiClient.post<PayrollSummaryDto>('/payroll/run', { month, year }),
+
+  approvePayrollRun: (month: number, year: number) =>
+    apiClient.post<{ success: boolean; message: string }>('/payroll/approve-run', { month, year }),
+
   // Salary Structure
   getSalaryStructure: (employeeId: string) =>
     apiClient.get<SalaryStructureDto>(`/payroll/salary-structure/${employeeId}`),
@@ -23,5 +44,23 @@ export const payrollApi = {
     month: number
     year: number
   }) =>
-    apiClient.post('/payroll/generate-payslip', data),
+    apiClient.post<PayslipDto>('/payroll/generate-payslip', data),
+
+  // Reimbursements
+  getReimbursements: (employeeId?: string, status?: string) => {
+    const params = new URLSearchParams()
+    if (employeeId) params.append('employeeId', employeeId)
+    if (status && status !== 'All') params.append('status', status)
+    const query = params.toString() ? `?${params.toString()}` : ''
+    return apiClient.get<ReimbursementDto[]>(`/payroll/reimbursements${query}`)
+  },
+
+  createReimbursement: (data: CreateReimbursementDto) =>
+    apiClient.post<ReimbursementDto>('/payroll/reimbursements', data),
+
+  approveReimbursement: (id: string) =>
+    apiClient.put<{ success: boolean; message: string }>(`/payroll/reimbursements/${id}/approve`, {}),
+
+  rejectReimbursement: (id: string, reason?: string) =>
+    apiClient.put<{ success: boolean; message: string }>(`/payroll/reimbursements/${id}/reject`, { reason }),
 }

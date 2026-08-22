@@ -46,10 +46,11 @@ public sealed class ApplicationDbContext
     public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
     public DbSet<LeaveBalance> LeaveBalances => Set<LeaveBalance>();
 
-    // Sprint 23: Payroll
+    // Sprint 23: Payroll & Reimbursements
     public DbSet<SalaryStructure> SalaryStructures => Set<SalaryStructure>();
     public DbSet<SalaryComponent> SalaryComponents => Set<SalaryComponent>();
     public DbSet<Payslip> Payslips => Set<Payslip>();
+    public DbSet<Reimbursement> Reimbursements => Set<Reimbursement>();
 
     // Sprint 24: Recruitment
     public DbSet<JobPosting> JobPostings => Set<JobPosting>();

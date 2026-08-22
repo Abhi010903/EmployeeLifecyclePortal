@@ -13,10 +13,11 @@ The complete **Employee Lifecycle Portal** - a production-ready Human Resource M
 Click: http://localhost:3000
 ```
 
-### 2️⃣ Login
+### 2️⃣ Login (Demo Credentials)
 ```
 Email: admin@example.com
 Password: Admin@123456
+(Note: Pre-seeded strictly for local development)
 ```
 
 ### 3️⃣ Explore!
@@ -60,23 +61,23 @@ You're now in the HRMS Dashboard with full access to all features.
 
 ---
 
-## 👥 Test Accounts
+## 👥 Demo / Local Development Accounts
 
-Three pre-configured accounts for testing:
+Three pre-configured accounts seeded strictly for local testing (not for production):
 
-### Admin (Full Access)
+### Admin (Full Access - Demo)
 ```
 Email:    admin@example.com
 Password: Admin@123456
 ```
 
-### Manager (Team Management)
+### Manager (Team Management - Demo)
 ```
 Email:    manager@example.com
 Password: Manager@123456
 ```
 
-### Employee (Basic Access)
+### Employee (Basic Access - Demo)
 ```
 Email:    employee@example.com
 Password: Employee@123456
@@ -500,7 +501,7 @@ You now have access to a **complete, professional-grade enterprise HRMS system**
 
 ### Get Started Now:
 1. Go to **http://localhost:3000**
-2. Login with **admin@example.com / Admin@123456**
+2. Login with demo credentials: **admin@example.com / Admin@123456**
 3. Explore and enjoy the HRMS system!
 
 ---

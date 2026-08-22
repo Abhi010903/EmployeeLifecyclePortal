@@ -279,7 +279,7 @@ npm run dev
 #### 3. Access Application
 ```
 Go to: http://localhost:3000
-Login: admin@example.com / Admin@123456
+Demo Login: admin@example.com / Admin@123456 (Local Development Only)
 ```
 
 ---
@@ -413,13 +413,15 @@ See **LOGIN_INSTRUCTIONS.md** for detailed troubleshooting.
 
 ---
 
-## 📋 Test Accounts
+## 📋 Demo / Local Development Credentials
+
+> **Note**: The following accounts are pre-seeded strictly for local development and demonstration purposes. They must never be used in production environments.
 
 | Email | Password | Role | Access |
 |-------|----------|------|--------|
-| admin@example.com | Admin@123456 | Admin | Full system access |
-| manager@example.com | Manager@123456 | Manager | Team management, approvals |
-| employee@example.com | Employee@123456 | Employee | Basic features, own records |
+| admin@example.com | Admin@123456 | Admin | Full system access (Demo) |
+| manager@example.com | Manager@123456 | Manager | Team management, approvals (Demo) |
+| employee@example.com | Employee@123456 | Employee | Basic features, own records (Demo) |
 
 ---
 

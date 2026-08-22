@@ -129,6 +129,19 @@ public static class DatabaseSeeder
                 );
             }
 
+            // Seed default SalaryStructure for employees if missing
+            var employees = await context.Employees.ToListAsync();
+            foreach (var emp in employees)
+            {
+                if (!await context.SalaryStructures.AnyAsync(s => s.EmployeeId == emp.Id))
+                {
+                    decimal baseSal = emp.FirstName.Contains("Vivek") ? 85000m :
+                                      emp.FirstName.Contains("Abhimanyu") ? 95000m :
+                                      emp.FirstName.Contains("Bheem") ? 80000m : 70000m;
+                    context.SalaryStructures.Add(new SalaryStructure(emp.Id, baseSal, new DateTime(2026, 1, 1)));
+                }
+            }
+
             await context.SaveChangesAsync();
             logger?.LogInformation("Database initialized and seed data successfully verified.");
         }

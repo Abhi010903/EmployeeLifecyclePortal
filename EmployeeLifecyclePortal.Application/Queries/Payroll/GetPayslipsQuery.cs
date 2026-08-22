@@ -18,6 +18,7 @@ public sealed class GetPayslipsQueryHandler : IRequestHandler<GetPayslipsQuery, 
 
     public async Task<List<PayslipDto>> Handle(GetPayslipsQuery request, CancellationToken cancellationToken)
     {
+        var departments = await _context.Departments.ToDictionaryAsync(d => d.Id, d => d.Name, cancellationToken);
         var query = _context.Payslips.Include(p => p.Employee).AsQueryable();
 
         if (request.EmployeeId.HasValue && request.EmployeeId.Value != Guid.Empty)
@@ -30,22 +31,44 @@ public sealed class GetPayslipsQueryHandler : IRequestHandler<GetPayslipsQuery, 
             .ThenByDescending(p => p.Month)
             .ToListAsync(cancellationToken);
 
-        return payslips.Select(p => new PayslipDto
+        return payslips.Select(p =>
         {
-            Id = p.Id,
-            EmployeeId = p.EmployeeId,
-            EmployeeName = p.Employee?.FullName ?? "Unknown",
-            Month = p.Month,
-            Year = p.Year,
-            GrossSalary = p.GrossSalary,
-            Deductions = p.Deductions,
-            NetSalary = p.NetSalary,
-            Status = p.Status,
-            GeneratedDateUtc = p.GeneratedDateUtc,
-            CreatedAtUtc = p.CreatedAtUtc,
-            CreatedBy = p.CreatedBy,
-            LastModifiedAtUtc = p.LastModifiedAtUtc,
-            LastModifiedBy = p.LastModifiedBy
+            var deptName = p.Employee != null && departments.TryGetValue(p.Employee.DepartmentId, out var dname) ? dname : "General";
+            return new PayslipDto
+            {
+                Id = p.Id,
+                EmployeeId = p.EmployeeId,
+                EmployeeName = p.Employee?.FullName ?? "Unknown",
+                EmployeeCode = p.Employee?.EmployeeCode ?? "",
+                DepartmentName = deptName,
+                Month = p.Month,
+                Year = p.Year,
+                BasicSalary = p.BasicSalary,
+                Hra = p.Hra,
+                Allowances = p.Allowances,
+                BonusPay = p.BonusPay,
+                OvertimePay = p.OvertimePay,
+                GrossSalary = p.GrossSalary,
+                PfDeduction = p.PfDeduction,
+                EsiDeduction = p.EsiDeduction,
+                TdsDeduction = p.TdsDeduction,
+                Deductions = p.Deductions,
+                ReimbursementsAmount = p.ReimbursementsAmount,
+                NetSalary = p.NetSalary,
+                WorkingDays = p.WorkingDays,
+                PresentDays = p.PresentDays,
+                PaidLeaveDays = p.PaidLeaveDays,
+                UnpaidLeaveDays = p.UnpaidLeaveDays,
+                Status = p.Status,
+                PaymentMethod = p.PaymentMethod,
+                PaymentDateUtc = p.PaymentDateUtc,
+                Remarks = p.Remarks,
+                GeneratedDateUtc = p.GeneratedDateUtc,
+                CreatedAtUtc = p.CreatedAtUtc,
+                CreatedBy = p.CreatedBy,
+                LastModifiedAtUtc = p.LastModifiedAtUtc,
+                LastModifiedBy = p.LastModifiedBy
+            };
         }).ToList();
     }
 }

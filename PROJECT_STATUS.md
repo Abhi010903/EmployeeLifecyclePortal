@@ -277,7 +277,7 @@ EmployeeLifecyclePortal/                    [Root - Clean & Organized]
 - Backend API: http://localhost:5086/api
 - API Docs: http://localhost:5086/swagger
 
-**Test Accounts**:
+**Demo / Local Development Credentials (Non-Production Only)**:
 - Admin: admin@example.com / Admin@123456
 - Manager: manager@example.com / Manager@123456
 - Employee: employee@example.com / Employee@123456

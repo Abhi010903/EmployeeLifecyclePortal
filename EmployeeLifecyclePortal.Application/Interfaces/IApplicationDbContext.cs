@@ -32,6 +32,8 @@ public interface IApplicationDbContext
 
     DbSet<SalaryComponent> SalaryComponents { get; }
 
+    DbSet<Reimbursement> Reimbursements { get; }
+
     // Tasks and Staffing
     DbSet<WorkTask> WorkTasks { get; }
 
