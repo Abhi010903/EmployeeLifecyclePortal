@@ -86,6 +86,7 @@ public sealed class DashboardController : ControllerBase
     /// 500 Internal Server Error: Database or processing error
     /// </returns>
     [HttpGet("growth-trend")]
+    [HttpGet("employee-growth")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]

@@ -21,7 +21,7 @@ public sealed class DepartmentsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Policy = Permissions.Manager)]
+    [Authorize(Policy = Permissions.Admin)]
     public async Task<IActionResult> CreateDepartment(
         CreateDepartmentCommand command,
         CancellationToken cancellationToken)
@@ -34,7 +34,7 @@ public sealed class DepartmentsController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = Permissions.Manager)]
+    [Authorize(Policy = Permissions.Admin)]
     public async Task<IActionResult> UpdateDepartment(
         Guid id,
         UpdateDepartmentCommand command,
@@ -90,6 +90,45 @@ public sealed class DepartmentsController : ControllerBase
     {
         var result = await _mediator.Send(
             new GetDepartmentEmployeesQuery(id),
+            cancellationToken);
+
+        return Ok(result);
+    }
+
+    [HttpGet("staffing-requests")]
+    public async Task<IActionResult> GetStaffingRequests(
+        [FromQuery] Guid? departmentId,
+        CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(
+            new GetStaffingRequestsQuery(departmentId),
+            cancellationToken);
+
+        return Ok(result);
+    }
+
+    [HttpPost("staffing-requests")]
+    [Authorize(Policy = Permissions.Supervisor)]
+    public async Task<IActionResult> CreateStaffingRequest(
+        CreateStaffingRequestCommand command,
+        CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(
+            command,
+            cancellationToken);
+
+        return Ok(result);
+    }
+
+    [HttpPut("staffing-requests/{id:guid}/resolve")]
+    [Authorize(Policy = Permissions.Admin)]
+    public async Task<IActionResult> ResolveStaffingRequest(
+        Guid id,
+        ResolveStaffingRequestCommand command,
+        CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(
+            command with { Id = id },
             cancellationToken);
 
         return Ok(result);

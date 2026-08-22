@@ -23,9 +23,31 @@ public sealed class JwtTokenService
         string email,
         string role)
     {
+        var secret = _configuration["Jwt:Key"] 
+            ?? _configuration["Jwt:Secret"] 
+            ?? _configuration["JWT_SECRET"];
+
+        if (string.IsNullOrWhiteSpace(secret) || secret == "${JWT_SECRET}" || secret.StartsWith("<"))
+        {
+            var envSecret = Environment.GetEnvironmentVariable("JWT_SECRET")
+                ?? Environment.GetEnvironmentVariable("Jwt__Key")
+                ?? Environment.GetEnvironmentVariable("Jwt__Secret");
+
+            if (!string.IsNullOrWhiteSpace(envSecret))
+            {
+                secret = envSecret;
+            }
+            else
+            {
+                throw new InvalidOperationException("JWT signing key is not configured. Please set the 'JWT_SECRET' environment variable or configure 'Jwt:Key' / 'Jwt:Secret'.");
+            }
+        }
+
+        var issuer = _configuration["Jwt:Issuer"] ?? "EmployeeLifecyclePortal";
+        var audience = _configuration["Jwt:Audience"] ?? "EmployeeLifecyclePortalUsers";
+
         var key = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(
-                _configuration["Jwt:Key"]!));
+            Encoding.UTF8.GetBytes(secret));
 
         var credentials =
             new SigningCredentials(
@@ -49,8 +71,8 @@ public sealed class JwtTokenService
 
         var token =
             new JwtSecurityToken(
-                issuer: _configuration["Jwt:Issuer"],
-                audience: _configuration["Jwt:Audience"],
+                issuer: issuer,
+                audience: audience,
                 claims: claims,
                 expires: DateTime.UtcNow.AddHours(8),
                 signingCredentials: credentials);

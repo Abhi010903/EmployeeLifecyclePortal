@@ -3,5 +3,8 @@ using MediatR;
 
 namespace EmployeeLifecyclePortal.Application.Commands.Attendance;
 
-public sealed record RejectLeaveCommand(Guid LeaveRequestId)
+public sealed record RejectLeaveCommand(
+    Guid LeaveRequestId,
+    Guid? RejectedByUserId = null,
+    string? Reason = null)
     : IRequest<LeaveRequestDto>;

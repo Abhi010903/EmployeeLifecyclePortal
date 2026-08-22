@@ -21,6 +21,8 @@ public sealed class GetEmployeeByIdQueryHandler
         CancellationToken cancellationToken)
     {
         var employee = await _context.Employees
+            .Include(e => e.Manager)
+            .Include(e => e.TeamLead)
             .FirstOrDefaultAsync(
                 x => x.Id == request.Id,
                 cancellationToken);
@@ -31,6 +33,19 @@ public sealed class GetEmployeeByIdQueryHandler
                 "Employee not found.");
         }
 
+        var department = await _context.Departments
+            .FirstOrDefaultAsync(d => d.Id == employee.DepartmentId, cancellationToken);
+
+        var assignedRoles = await _context.EmployeeRoles
+            .Where(er => er.EmployeeId == employee.Id)
+            .Join(_context.Roles,
+                er => er.RoleId,
+                r => r.Id,
+                (er, r) => new { r.Id, r.Name })
+            .ToListAsync(cancellationToken);
+
+        var primaryRole = assignedRoles.FirstOrDefault();
+
         return new EmployeeDto
         {
             Id = employee.Id,
@@ -39,7 +54,16 @@ public sealed class GetEmployeeByIdQueryHandler
             LastName = employee.LastName,
             Email = employee.Email,
             PhoneNumber = employee.PhoneNumber,
+            Status = employee.Status.ToString(),
             DepartmentId = employee.DepartmentId,
+            DepartmentName = department?.Name,
+            ManagerId = employee.ManagerId,
+            ManagerName = employee.Manager?.FullName,
+            TeamLeadId = employee.TeamLeadId,
+            TeamLeadName = employee.TeamLead?.FullName,
+            RoleId = primaryRole?.Id,
+            RoleName = primaryRole?.Name,
+            Roles = assignedRoles.Select(r => r.Name).ToList(),
             CreatedAtUtc = employee.CreatedAtUtc,
             CreatedBy = employee.CreatedBy,
             LastModifiedAtUtc = employee.LastModifiedAtUtc,

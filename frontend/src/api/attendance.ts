@@ -11,8 +11,10 @@ export const attendanceApi = {
   checkIn: (data: { employeeId: string; notes?: string }) =>
     apiClient.post('/attendance/check-in', data),
 
-  checkOut: (attendanceId: string) =>
-    apiClient.post('/attendance/check-out', { attendanceId }),
+  checkOut: (params: { attendanceId?: string; employeeId?: string } | string) => {
+    const payload = typeof params === 'string' ? { attendanceId: params } : params
+    return apiClient.post('/attendance/check-out', payload)
+  },
 
   getAll: () =>
     apiClient.get<AttendanceDto[]>('/attendance'),

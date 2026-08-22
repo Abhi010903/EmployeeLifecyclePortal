@@ -28,6 +28,29 @@ public interface IApplicationDbContext
 
     DbSet<Payslip> Payslips { get; }
 
+    DbSet<SalaryStructure> SalaryStructures { get; }
+
+    DbSet<SalaryComponent> SalaryComponents { get; }
+
+    // Tasks and Staffing
+    DbSet<WorkTask> WorkTasks { get; }
+
+    DbSet<StaffingRequest> StaffingRequests { get; }
+
+    // Recruitment
+    DbSet<JobPosting> JobPostings { get; }
+
+    DbSet<Candidate> Candidates { get; }
+
+    DbSet<Interview> Interviews { get; }
+
+    DbSet<JobOffer> JobOffers { get; }
+
+    // Employee related
+    DbSet<EmployeeTimeline> EmployeeTimelines { get; }
+
+    DbSet<EmployeeDocument> EmployeeDocuments { get; }
+
     // Performance
     DbSet<PerformanceGoal> PerformanceGoals { get; }
 
@@ -41,6 +64,13 @@ public interface IApplicationDbContext
     DbSet<AssetAssignment> AssetAssignments { get; }
 
     DbSet<AssetMaintenance> AssetMaintenances { get; }
+
+    // Reports
+    DbSet<Report> Reports { get; }
+
+    DbSet<DashboardWidget> DashboardWidgets { get; }
+
+    DbSet<DepartmentAnalytics> DepartmentAnalytics { get; }
 
     // Settings
     DbSet<CompanyProfile> CompanyProfiles { get; }

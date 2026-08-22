@@ -29,6 +29,10 @@ public sealed class EmployeeProfileDto
 
     public string? ManagerName { get; set; }
 
+    public Guid? TeamLeadId { get; set; }
+
+    public string? TeamLeadName { get; set; }
+
     public List<EmployeeRoleDto> Roles { get; set; } = [];
 
     public DateTime CreatedAtUtc { get; set; }

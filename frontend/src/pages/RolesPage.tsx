@@ -8,6 +8,7 @@ import Modal from '@/components/Common/Modal'
 import { Plus, Search, Edit2, Trash2, Eye, ChevronLeft, ChevronRight } from 'lucide-react'
 import { rolesApi } from '@/api/roles'
 import type { Role } from '@/types'
+import { formatDateIST } from '@/utils/format'
 import toast from 'react-hot-toast'
 
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100]
@@ -185,11 +186,7 @@ export default function RolesPage() {
   }
 
   const formatDate = (date: string) => {
-    return new Intl.DateTimeFormat('en-IN', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    }).format(new Date(date))
+    return formatDateIST(date)
   }
 
   return (

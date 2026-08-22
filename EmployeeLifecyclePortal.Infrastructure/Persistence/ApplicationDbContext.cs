@@ -57,6 +57,10 @@ public sealed class ApplicationDbContext
     public DbSet<Interview> Interviews => Set<Interview>();
     public DbSet<JobOffer> JobOffers => Set<JobOffer>();
 
+    // Tasks and Staffing
+    public DbSet<WorkTask> WorkTasks => Set<WorkTask>();
+    public DbSet<StaffingRequest> StaffingRequests => Set<StaffingRequest>();
+
     // Sprint 25: Performance
     public DbSet<PerformanceGoal> PerformanceGoals => Set<PerformanceGoal>();
     public DbSet<PerformanceReview> PerformanceReviews => Set<PerformanceReview>();
@@ -90,6 +94,13 @@ public sealed class ApplicationDbContext
     public DbSet<Shift> Shifts => Set<Shift>();
     public DbSet<WorkingHours> WorkingHours => Set<WorkingHours>();
     public DbSet<EmailConfiguration> EmailConfigurations => Set<EmailConfiguration>();
+
+    protected override void ConfigureConventions(
+        ModelConfigurationBuilder configurationBuilder)
+    {
+        configurationBuilder.Properties<decimal>().HavePrecision(18, 2);
+        base.ConfigureConventions(configurationBuilder);
+    }
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)

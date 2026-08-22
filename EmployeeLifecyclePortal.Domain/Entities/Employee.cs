@@ -34,6 +34,16 @@ public class Employee : AuditableEntity
     public Employee? Manager { get; private set; }
 
     /// <summary>
+    /// The team lead's ID
+    /// </summary>
+    public Guid? TeamLeadId { get; private set; }
+
+    /// <summary>
+    /// Navigation property to the team lead
+    /// </summary>
+    public Employee? TeamLead { get; private set; }
+
+    /// <summary>
     /// Collection of employees managed by this employee (subordinates)
     /// </summary>
     private readonly List<Employee> _subordinates = [];
@@ -76,6 +86,9 @@ public class Employee : AuditableEntity
         if (string.IsNullOrWhiteSpace(email))
             throw new ArgumentException("Email is required.");
 
+        if (departmentId == Guid.Empty)
+            throw new ArgumentException("Department ID is required.");
+
         EmployeeCode = employeeCode;
         FirstName = firstName;
         LastName = lastName;
@@ -85,12 +98,11 @@ public class Employee : AuditableEntity
         Status = EmploymentStatus.Active;
     }
 
-    public void Update(
+    public void UpdatePersonalInformation(
         string firstName,
         string lastName,
         string email,
-        string? phoneNumber,
-        Guid departmentId)
+        string? phoneNumber)
     {
         if (string.IsNullOrWhiteSpace(firstName))
             throw new ArgumentException("First name is required.");
@@ -105,18 +117,37 @@ public class Employee : AuditableEntity
         LastName = lastName;
         Email = email;
         PhoneNumber = phoneNumber;
-        DepartmentId = departmentId;
     }
 
     public void AssignDepartment(
         Guid departmentId)
     {
+        if (departmentId == Guid.Empty)
+            throw new ArgumentException("Department ID is required.");
+
         DepartmentId = departmentId;
     }
 
-    public void UpdatePhoneNumber(
+    public void Update(
+        string firstName,
+        string lastName,
+        string email,
+        string? phoneNumber,
+        Guid departmentId)
+    {
+        UpdatePersonalInformation(firstName, lastName, email, phoneNumber);
+        AssignDepartment(departmentId);
+    }
+
+    public void UpdateDetails(
+        string firstName,
+        string lastName,
+        string email,
         string? phoneNumber)
     {
+        FirstName = firstName;
+        LastName = lastName;
+        Email = email;
         PhoneNumber = phoneNumber;
     }
 
@@ -137,6 +168,25 @@ public class Employee : AuditableEntity
     public void RemoveManager()
     {
         ManagerId = null;
+    }
+
+    /// <summary>
+    /// Assigns a team lead to this employee
+    /// </summary>
+    public void AssignTeamLead(Guid? teamLeadId)
+    {
+        if (teamLeadId == Id)
+            throw new InvalidOperationException("An employee cannot be their own team lead.");
+
+        TeamLeadId = teamLeadId;
+    }
+
+    /// <summary>
+    /// Removes the team lead assignment
+    /// </summary>
+    public void RemoveTeamLead()
+    {
+        TeamLeadId = null;
     }
 
     public void AssignRole(

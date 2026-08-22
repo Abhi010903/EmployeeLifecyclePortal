@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import MainLayout from '@/components/Layout/MainLayout'
 import Card from '@/components/Common/Card'
 import Button from '@/components/Common/Button'
@@ -7,7 +7,7 @@ import { BarChart, LineChart, PieChart, Download, AlertCircle } from 'lucide-rea
 import { reportsApi } from '@/api/reports'
 import { ReportDataDto } from '@/types'
 
-type ReportType = 'employees' | 'attendance' | 'payroll' | 'department'
+type ReportType = 'employees' | 'attendance' | 'payroll' | 'department' | 'leave'
 
 export default function ReportsPage() {
   const [reportType, setReportType] = useState<ReportType>('employees')
@@ -26,22 +26,31 @@ export default function ReportsPage() {
       let data: ReportDataDto | null = null
 
       switch (reportType) {
-        case 'employees':
+        case 'employees': {
           const empRes = await reportsApi.getEmployeeReport()
           data = empRes.data || null
           break
-        case 'attendance':
+        }
+        case 'attendance': {
           const attRes = await reportsApi.getAttendanceReport(startDate, endDate)
           data = attRes.data || null
           break
-        case 'payroll':
+        }
+        case 'payroll': {
           const payRes = await reportsApi.getPayrollReport(month, year)
           data = payRes.data || null
           break
-        case 'department':
+        }
+        case 'department': {
           const deptRes = await reportsApi.getDepartmentReport(month, year)
           data = deptRes.data || null
           break
+        }
+        case 'leave': {
+          const leaveRes = await reportsApi.getLeaveReport(year)
+          data = leaveRes.data || null
+          break
+        }
       }
 
       setReportData(data)
@@ -52,6 +61,10 @@ export default function ReportsPage() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    generateReport()
+  }, [reportType])
 
   const handleExport = async (format: 'csv' | 'excel' | 'pdf') => {
     try {
@@ -83,12 +96,13 @@ export default function ReportsPage() {
         {/* Report Type Selection */}
         <Card>
           <h2 className="text-lg font-semibold text-neutral-900 mb-4">Select Report Type</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
             {[
               { id: 'employees', label: 'Employees', icon: '👥' },
               { id: 'attendance', label: 'Attendance', icon: '📋' },
               { id: 'payroll', label: 'Payroll', icon: '💰' },
               { id: 'department', label: 'Department', icon: '🏢' },
+              { id: 'leave', label: 'Leave', icon: '🏖️' },
             ].map(report => (
               <button
                 key={report.id}

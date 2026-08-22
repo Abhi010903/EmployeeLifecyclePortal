@@ -23,14 +23,14 @@ public sealed class GetLeaveRequestsQueryHandler
         var query = _context.LeaveRequests
             .Include(lr => lr.Employee)
             .Include(lr => lr.LeaveType)
-            .AsQueryable();
+            .AsNoTracking();
 
         if (request.EmployeeId.HasValue)
         {
             query = query.Where(lr => lr.EmployeeId == request.EmployeeId.Value);
         }
 
-        if (!string.IsNullOrEmpty(request.Status))
+        if (!string.IsNullOrEmpty(request.Status) && request.Status != "All")
         {
             query = query.Where(lr => lr.Status == request.Status);
         }
@@ -51,6 +51,13 @@ public sealed class GetLeaveRequestsQueryHandler
                 Status = leaveRequest.Status,
                 Reason = leaveRequest.Reason,
                 ApprovedByUserId = leaveRequest.ApprovedByUserId,
+                ManagerApprovedByUserId = leaveRequest.ManagerApprovedByUserId,
+                ManagerApprovedAtUtc = leaveRequest.ManagerApprovedAtUtc,
+                FinalApprovedByUserId = leaveRequest.FinalApprovedByUserId,
+                FinalApprovedAtUtc = leaveRequest.FinalApprovedAtUtc,
+                RejectedByUserId = leaveRequest.RejectedByUserId,
+                RejectedAtUtc = leaveRequest.RejectedAtUtc,
+                RejectionReason = leaveRequest.RejectionReason,
                 CreatedAtUtc = leaveRequest.CreatedAtUtc,
                 CreatedBy = leaveRequest.CreatedBy,
                 LastModifiedAtUtc = leaveRequest.LastModifiedAtUtc,

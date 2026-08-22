@@ -30,11 +30,15 @@ public sealed class EmployeesController : ControllerBase
 
     [HttpGet]
     public async Task<IActionResult> GetAllEmployees(
+        [FromQuery] int? pageNumber,
+        [FromQuery] int? pageSize,
         CancellationToken cancellationToken)
     {
-        return Ok(await _mediator.Send(
+        var result = await _mediator.Send(
             new GetAllEmployeesQuery(),
-            cancellationToken));
+            cancellationToken);
+
+        return Ok(result);
     }
 
     [HttpGet("{id:guid}")]
@@ -44,6 +48,26 @@ public sealed class EmployeesController : ControllerBase
     {
         return Ok(await _mediator.Send(
             new GetEmployeeByIdQuery(id),
+            cancellationToken));
+    }
+
+    [HttpGet("{id:guid}/profile")]
+    public async Task<IActionResult> GetEmployeeProfile(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _mediator.Send(
+            new GetEmployeeProfileQuery(id),
+            cancellationToken));
+    }
+
+    [HttpGet("{id:guid}/timeline")]
+    public async Task<IActionResult> GetEmployeeTimeline(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _mediator.Send(
+            new GetEmployeeTimelineQuery(id),
             cancellationToken));
     }
 

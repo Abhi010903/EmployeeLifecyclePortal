@@ -7,7 +7,7 @@ public class SalaryStructure : AuditableEntity
 {
     public Guid EmployeeId { get; private set; }
     public decimal BaseSalary { get; private set; }
-    public string Currency { get; private set; } = "USD";
+    public string Currency { get; private set; } = "INR";
     public DateTime EffectiveFromUtc { get; private set; }
     public DateTime? EffectiveToUtc { get; private set; }
     public bool IsActive { get; private set; } = true;

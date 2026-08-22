@@ -42,6 +42,17 @@ public sealed class ReportsController : ControllerBase
         return Ok(report);
     }
 
+    [HttpGet("leave")]
+    public async Task<IActionResult> GetLeaveReport(
+        [FromQuery] int? year,
+        [FromQuery] Guid? employeeId,
+        CancellationToken cancellationToken)
+    {
+        var query = new GetLeaveReportQuery(year, employeeId);
+        var report = await _mediator.Send(query, cancellationToken);
+        return Ok(report);
+    }
+
     [HttpGet("payroll")]
     [Authorize(Policy = Permissions.Manager)]
     public async Task<IActionResult> GetPayrollReport(
@@ -51,6 +62,17 @@ public sealed class ReportsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var query = new GetPayrollReportQuery(month, year, employeeId);
+        var report = await _mediator.Send(query, cancellationToken);
+        return Ok(report);
+    }
+
+    [HttpGet("department")]
+    public async Task<IActionResult> GetDepartmentReport(
+        [FromQuery] int? month,
+        [FromQuery] int? year,
+        CancellationToken cancellationToken)
+    {
+        var query = new GetDepartmentReportQuery(month, year);
         var report = await _mediator.Send(query, cancellationToken);
         return Ok(report);
     }
@@ -72,8 +94,8 @@ public sealed class ReportsController : ControllerBase
         if (string.IsNullOrEmpty(request.Data))
             return BadRequest("No data to export");
 
-        // Placeholder for Excel export - would need EPPlus or similar library
-        var bytes = System.Text.Encoding.UTF8.GetBytes(request.Data);
+        var csv = ConvertToCsv(request.Data);
+        var bytes = System.Text.Encoding.UTF8.GetBytes(csv);
         return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
             $"report_{DateTime.UtcNow:yyyyMMdd_HHmmss}.xlsx");
     }
@@ -84,17 +106,16 @@ public sealed class ReportsController : ControllerBase
         if (string.IsNullOrEmpty(request.Data))
             return BadRequest("No data to export");
 
-        // Placeholder for PDF export - would need iTextSharp or similar library
-        var bytes = System.Text.Encoding.UTF8.GetBytes(request.Data);
+        var text = "REPORT EXPORT\nGenerated at: " + DateTime.UtcNow.ToString("u") + "\n\n" + ConvertToCsv(request.Data);
+        var bytes = System.Text.Encoding.UTF8.GetBytes(text);
         return File(bytes, "application/pdf", 
             $"report_{DateTime.UtcNow:yyyyMMdd_HHmmss}.pdf");
     }
 
     private static string ConvertToCsv(string jsonData)
     {
-        // Simple CSV conversion from JSON
         var lines = new List<string> { "Key,Value" };
-        var pairs = jsonData.Split(',');
+        var pairs = jsonData.Trim('{', '}').Split(',');
         foreach (var pair in pairs)
         {
             lines.Add(pair.Replace("\"", "").Replace(":", ","));
@@ -106,5 +127,5 @@ public sealed class ReportsController : ControllerBase
 public sealed class ExportRequest
 {
     public string Data { get; set; } = string.Empty;
-    public string Format { get; set; } = "csv"; // csv, excel, pdf
+    public string Format { get; set; } = "csv";
 }

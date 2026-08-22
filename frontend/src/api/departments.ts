@@ -1,15 +1,28 @@
 import { apiClient } from './client'
-import type { Department, PaginatedResponse } from '@/types'
+import type { Department, PaginatedResponse, StaffingRequest, CreateStaffingRequestDto, ResolveStaffingRequestDto } from '@/types'
 
 export const departmentsApi = {
   getAll: async (pageNumber = 1, pageSize = 10): Promise<PaginatedResponse<Department>> => {
     const response = await apiClient.get(`/departments?pageNumber=${pageNumber}&pageSize=${pageSize}`)
-    return response.data
+    const data = response.data
+    if (Array.isArray(data)) {
+      return {
+        items: data,
+        totalCount: data.length,
+        pageNumber,
+        pageSize,
+        totalPages: Math.ceil(data.length / pageSize) || 1,
+      }
+    }
+    return data
   },
 
   getAllSimple: async (): Promise<Department[]> => {
     const response = await apiClient.get('/departments')
-    return response.data
+    const data = response.data
+    if (Array.isArray(data)) return data
+    if (data && Array.isArray(data.items)) return data.items
+    return []
   },
 
   getById: async (id: string): Promise<Department> => {
@@ -40,5 +53,22 @@ export const departmentsApi = {
 
   delete: async (id: string) => {
     await apiClient.delete(`/departments/${id}`)
+  },
+
+  getStaffingRequests: async (departmentId?: string): Promise<StaffingRequest[]> => {
+    const response = await apiClient.get<StaffingRequest[]>('/departments/staffing-requests', {
+      params: { departmentId },
+    })
+    return response.data
+  },
+
+  createStaffingRequest: async (data: CreateStaffingRequestDto): Promise<StaffingRequest> => {
+    const response = await apiClient.post<StaffingRequest>('/departments/staffing-requests', data)
+    return response.data
+  },
+
+  resolveStaffingRequest: async (id: string, data: ResolveStaffingRequestDto): Promise<StaffingRequest> => {
+    const response = await apiClient.put<StaffingRequest>(`/departments/staffing-requests/${id}/resolve`, data)
+    return response.data
   },
 }

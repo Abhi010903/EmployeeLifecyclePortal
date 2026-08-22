@@ -20,16 +20,20 @@ public sealed class GetLeaveBalanceQueryHandler
         GetLeaveBalanceQuery request,
         CancellationToken cancellationToken)
     {
-        return await _context.LeaveBalances
+        var balances = await _context.LeaveBalances
             .Include(lb => lb.Employee)
             .Include(lb => lb.LeaveType)
             .Where(lb => lb.EmployeeId == request.EmployeeId)
-            .Select(balance => new LeaveBalanceDto
+            .ToListAsync(cancellationToken);
+
+        if (balances.Count > 0)
+        {
+            return balances.Select(balance => new LeaveBalanceDto
             {
                 Id = balance.Id,
                 EmployeeId = balance.EmployeeId,
                 EmployeeName = balance.Employee != null 
-                    ? $"{balance.Employee.FirstName} {balance.Employee.LastName}"
+                    ? $"{balance.Employee.FirstName} {balance.Employee.LastName}".Trim()
                     : "Unknown",
                 LeaveTypeId = balance.LeaveTypeId,
                 LeaveTypeName = balance.LeaveType != null ? balance.LeaveType.Name : "Unknown",
@@ -41,7 +45,33 @@ public sealed class GetLeaveBalanceQueryHandler
                 CreatedBy = balance.CreatedBy,
                 LastModifiedAtUtc = balance.LastModifiedAtUtc,
                 LastModifiedBy = balance.LastModifiedBy
-            })
+            }).ToList();
+        }
+
+        // If no explicit balance records, calculate dynamically from master LeaveTypes and approved LeaveRequests
+        var employee = await _context.Employees.FirstOrDefaultAsync(e => e.Id == request.EmployeeId, cancellationToken);
+        var leaveTypes = await _context.LeaveTypes.ToListAsync(cancellationToken);
+        var currentYear = DateTime.UtcNow.Year;
+        var approvedLeaves = await _context.LeaveRequests
+            .Where(lr => lr.EmployeeId == request.EmployeeId && lr.Status == "Approved" && lr.StartDateUtc.Year == currentYear)
             .ToListAsync(cancellationToken);
+
+        return leaveTypes.Select(lt =>
+        {
+            var used = approvedLeaves.Where(l => l.LeaveTypeId == lt.Id).Sum(l => l.GetDaysRequested());
+            return new LeaveBalanceDto
+            {
+                Id = Guid.NewGuid(),
+                EmployeeId = request.EmployeeId,
+                EmployeeName = employee != null ? $"{employee.FirstName} {employee.LastName}".Trim() : "Unknown",
+                LeaveTypeId = lt.Id,
+                LeaveTypeName = lt.Name,
+                TotalDays = lt.DaysPerYear,
+                UsedDays = used,
+                RemainingDays = Math.Max(0, lt.DaysPerYear - used),
+                Year = currentYear,
+                CreatedAtUtc = lt.CreatedAtUtc
+            };
+        }).ToList();
     }
 }

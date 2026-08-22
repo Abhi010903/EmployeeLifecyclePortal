@@ -1,6 +1,7 @@
 using EmployeeLifecyclePortal.Application.DTOs;
-using EmployeeLifecyclePortal.Application.Interfaces.Repositories;
+using EmployeeLifecyclePortal.Application.Interfaces;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace EmployeeLifecyclePortal.Application.Queries.Employees;
@@ -8,17 +9,14 @@ namespace EmployeeLifecyclePortal.Application.Queries.Employees;
 public sealed class GetEmployeeProfileQueryHandler
     : IRequestHandler<GetEmployeeProfileQuery, EmployeeProfileDto>
 {
-    private readonly IEmployeeRepository _employeeRepository;
-    private readonly IDepartmentRepository _departmentRepository;
+    private readonly IApplicationDbContext _context;
     private readonly ILogger<GetEmployeeProfileQueryHandler> _logger;
 
     public GetEmployeeProfileQueryHandler(
-        IEmployeeRepository employeeRepository,
-        IDepartmentRepository departmentRepository,
+        IApplicationDbContext context,
         ILogger<GetEmployeeProfileQueryHandler> logger)
     {
-        _employeeRepository = employeeRepository;
-        _departmentRepository = departmentRepository;
+        _context = context;
         _logger = logger;
     }
 
@@ -26,31 +24,47 @@ public sealed class GetEmployeeProfileQueryHandler
         GetEmployeeProfileQuery request,
         CancellationToken cancellationToken)
     {
-        var employee = await _employeeRepository.GetByIdAsync(
-            request.EmployeeId,
-            cancellationToken);
+        var employee = await _context.Employees
+            .Include(e => e.Manager)
+            .Include(e => e.TeamLead)
+            .FirstOrDefaultAsync(
+                x => x.Id == request.EmployeeId,
+                cancellationToken);
 
         if (employee is null)
             throw new InvalidOperationException(
                 $"Employee with ID {request.EmployeeId} not found.");
 
-        var department = await _departmentRepository.GetByIdAsync(
-            employee.DepartmentId,
-            cancellationToken);
+        var department = await _context.Departments
+            .FirstOrDefaultAsync(d => d.Id == employee.DepartmentId, cancellationToken);
 
-        string? managerName = null;
-        if (employee.ManagerId.HasValue)
-        {
-            var manager = await _employeeRepository.GetByIdAsync(
-                employee.ManagerId.Value,
-                cancellationToken);
-            managerName = manager?.FullName;
-        }
+        var roles = await _context.EmployeeRoles
+            .Where(er => er.EmployeeId == employee.Id)
+            .Join(_context.Roles,
+                er => er.RoleId,
+                r => r.Id,
+                (er, r) => new EmployeeRoleDto
+                {
+                    RoleId = r.Id,
+                    RoleName = r.Name,
+                    RoleDescription = r.Description
+                })
+            .ToListAsync(cancellationToken);
+
+        var timelineEventsCount = await _context.EmployeeTimelines
+            .CountAsync(t => t.EmployeeId == employee.Id, cancellationToken);
+
+        var documentsCount = await _context.EmployeeDocuments
+            .CountAsync(d => d.EmployeeId == employee.Id && !d.IsArchived, cancellationToken);
+
+        var subordinatesCount = await _context.Employees
+            .CountAsync(e => e.ManagerId == employee.Id || e.TeamLeadId == employee.Id, cancellationToken);
 
         _logger.LogInformation(
-            "Employee profile retrieved — Employee: {EmployeeId} | Name: {FullName}",
+            "Employee profile retrieved — Employee: {EmployeeId} | Name: {FullName} | Roles: {RoleCount}",
             request.EmployeeId,
-            employee.FullName);
+            employee.FullName,
+            roles.Count);
 
         return new EmployeeProfileDto
         {
@@ -64,20 +78,17 @@ public sealed class GetEmployeeProfileQueryHandler
             DepartmentId = employee.DepartmentId,
             DepartmentName = department?.Name,
             ManagerId = employee.ManagerId,
-            ManagerName = managerName,
-            Roles = employee.EmployeeRoles.Select(x => new EmployeeRoleDto
-            {
-                RoleId = x.RoleId,
-                RoleName = "Unknown",
-                RoleDescription = string.Empty
-            }).ToList(),
+            ManagerName = employee.Manager?.FullName,
+            TeamLeadId = employee.TeamLeadId,
+            TeamLeadName = employee.TeamLead?.FullName,
+            Roles = roles,
             CreatedAtUtc = employee.CreatedAtUtc,
             CreatedBy = employee.CreatedBy,
             LastModifiedAtUtc = employee.LastModifiedAtUtc,
             LastModifiedBy = employee.LastModifiedBy,
-            TimelineEventsCount = employee.Timelines.Count,
-            DocumentsCount = employee.Documents.Count,
-            SubordinatesCount = employee.Subordinates.Count
+            TimelineEventsCount = timelineEventsCount,
+            DocumentsCount = documentsCount,
+            SubordinatesCount = subordinatesCount
         };
     }
 }

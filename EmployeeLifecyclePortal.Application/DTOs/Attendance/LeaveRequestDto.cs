@@ -26,6 +26,26 @@ public sealed class LeaveRequestDto
 
     public string? ApprovedByName { get; set; }
 
+    public Guid? ManagerApprovedByUserId { get; set; }
+
+    public string? ManagerApprovedByName { get; set; }
+
+    public DateTime? ManagerApprovedAtUtc { get; set; }
+
+    public Guid? FinalApprovedByUserId { get; set; }
+
+    public string? FinalApprovedByName { get; set; }
+
+    public DateTime? FinalApprovedAtUtc { get; set; }
+
+    public Guid? RejectedByUserId { get; set; }
+
+    public string? RejectedByName { get; set; }
+
+    public DateTime? RejectedAtUtc { get; set; }
+
+    public string? RejectionReason { get; set; }
+
     public DateTime CreatedAtUtc { get; set; }
 
     public string? CreatedBy { get; set; }

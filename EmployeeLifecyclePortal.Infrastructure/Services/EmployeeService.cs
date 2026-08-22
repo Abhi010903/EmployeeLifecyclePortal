@@ -1,6 +1,8 @@
 using EmployeeLifecyclePortal.Application.Interfaces;
 using EmployeeLifecyclePortal.Application.Interfaces.Repositories;
 using EmployeeLifecyclePortal.Domain.Entities;
+using EmployeeLifecyclePortal.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace EmployeeLifecyclePortal.Infrastructure.Services;
@@ -10,15 +12,18 @@ namespace EmployeeLifecyclePortal.Infrastructure.Services;
 /// </summary>
 public sealed class EmployeeService : IEmployeeService
 {
+    private readonly ApplicationDbContext _context;
     private readonly IEmployeeRepository _employeeRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<EmployeeService> _logger;
 
     public EmployeeService(
+        ApplicationDbContext context,
         IEmployeeRepository employeeRepository,
         IUnitOfWork unitOfWork,
         ILogger<EmployeeService> logger)
     {
+        _context = context;
         _employeeRepository = employeeRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
@@ -47,6 +52,7 @@ public sealed class EmployeeService : IEmployeeService
             category);
 
         employee.AddTimelineEvent(timelineEvent);
+        await _context.EmployeeTimelines.AddAsync(timelineEvent, cancellationToken);
 
         await _unitOfWork.CommitAsync(cancellationToken);
 
@@ -63,14 +69,14 @@ public sealed class EmployeeService : IEmployeeService
         Guid employeeId,
         CancellationToken cancellationToken = default)
     {
-        var employee = await _employeeRepository.GetByIdAsync(employeeId, cancellationToken);
-
-        if (employee is null)
+        var exists = await _context.Employees.AnyAsync(x => x.Id == employeeId, cancellationToken);
+        if (!exists)
             throw new InvalidOperationException($"Employee with ID {employeeId} not found.");
 
-        return employee.Timelines
+        return await _context.EmployeeTimelines
+            .Where(x => x.EmployeeId == employeeId)
             .OrderByDescending(x => x.EventDateUtc)
-            .ToList();
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<EmployeeDocument> AddDocumentAsync(
@@ -100,6 +106,7 @@ public sealed class EmployeeService : IEmployeeService
             notes);
 
         employee.AddDocument(document);
+        await _context.EmployeeDocuments.AddAsync(document, cancellationToken);
 
         await _unitOfWork.CommitAsync(cancellationToken);
 
@@ -117,56 +124,62 @@ public sealed class EmployeeService : IEmployeeService
         bool includeArchived = false,
         CancellationToken cancellationToken = default)
     {
-        var employee = await _employeeRepository.GetByIdAsync(employeeId, cancellationToken);
-
-        if (employee is null)
+        var exists = await _context.Employees.AnyAsync(x => x.Id == employeeId, cancellationToken);
+        if (!exists)
             throw new InvalidOperationException($"Employee with ID {employeeId} not found.");
 
-        var documents = employee.Documents.AsEnumerable();
+        var query = _context.EmployeeDocuments.Where(x => x.EmployeeId == employeeId);
 
         if (!includeArchived)
         {
-            documents = documents.Where(x => !x.IsArchived);
+            query = query.Where(x => !x.IsArchived);
         }
 
-        return documents
+        return await query
             .OrderByDescending(x => x.CreatedAtUtc)
-            .ToList();
+            .ToListAsync(cancellationToken);
     }
 
     public async Task ArchiveDocumentAsync(
         Guid documentId,
         CancellationToken cancellationToken = default)
     {
-        // Note: In a real implementation, you would fetch the document from the repository
-        // For now, this demonstrates the pattern
+        var doc = await _context.EmployeeDocuments.FindAsync(new object[] { documentId }, cancellationToken);
+        if (doc != null)
+        {
+            doc.Archive();
+            await _unitOfWork.CommitAsync(cancellationToken);
+        }
+
         _logger.LogInformation(
             "Document archived — Document ID: {DocumentId}",
             documentId);
-
-        await Task.CompletedTask;
     }
 
     public async Task UnarchiveDocumentAsync(
         Guid documentId,
         CancellationToken cancellationToken = default)
     {
-        // Note: In a real implementation, you would fetch the document from the repository
+        var doc = await _context.EmployeeDocuments.FindAsync(new object[] { documentId }, cancellationToken);
+        if (doc != null)
+        {
+            doc.Unarchive();
+            await _unitOfWork.CommitAsync(cancellationToken);
+        }
+
         _logger.LogInformation(
             "Document unarchived — Document ID: {DocumentId}",
             documentId);
-
-        await Task.CompletedTask;
     }
 
     public async Task<List<EmployeeDocument>> GetExpiringDocumentsAsync(
         int days,
         CancellationToken cancellationToken = default)
     {
-        // This would typically query the database for documents expiring within the specified days
-        // For now, return empty list as a placeholder
-        await Task.CompletedTask;
-        return [];
+        var threshold = DateTime.UtcNow.AddDays(days);
+        return await _context.EmployeeDocuments
+            .Where(d => !d.IsArchived && d.ExpirationDateUtc.HasValue && d.ExpirationDateUtc.Value <= threshold && d.ExpirationDateUtc.Value >= DateTime.UtcNow)
+            .ToListAsync(cancellationToken);
     }
 
     public async Task AssignManagerAsync(
@@ -218,30 +231,23 @@ public sealed class EmployeeService : IEmployeeService
         Guid managerId,
         CancellationToken cancellationToken = default)
     {
-        var manager = await _employeeRepository.GetByIdAsync(managerId, cancellationToken);
-
-        if (manager is null)
+        var exists = await _context.Employees.AnyAsync(x => x.Id == managerId, cancellationToken);
+        if (!exists)
             throw new InvalidOperationException($"Manager with ID {managerId} not found.");
 
-        // Return subordinates from the manager's Subordinates collection
-        // In a real implementation, this would query the database
-        return manager.Subordinates.ToList();
+        return await _context.Employees
+            .Where(x => x.ManagerId == managerId)
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<Employee?> GetManagerAsync(
         Guid employeeId,
         CancellationToken cancellationToken = default)
     {
-        var employee = await _employeeRepository.GetByIdAsync(employeeId, cancellationToken);
+        var employee = await _context.Employees
+            .Include(e => e.Manager)
+            .FirstOrDefaultAsync(x => x.Id == employeeId, cancellationToken);
 
-        if (employee is null)
-            return null;
-
-        if (employee.ManagerId.HasValue)
-        {
-            return await _employeeRepository.GetByIdAsync(employee.ManagerId.Value, cancellationToken);
-        }
-
-        return null;
+        return employee?.Manager;
     }
 }

@@ -34,6 +34,7 @@ public class Candidate : AuditableEntity
 {
     public string FirstName { get; private set; } = string.Empty;
     public string LastName { get; private set; } = string.Empty;
+    public string FullName => $"{FirstName} {LastName}".Trim();
     public string Email { get; private set; } = string.Empty;
     public string? PhoneNumber { get; private set; }
     public string Status { get; private set; } = "Applied";
@@ -59,6 +60,16 @@ public class Candidate : AuditableEntity
     public void Reject()
     {
         Status = "Rejected";
+    }
+
+    public void UpdateStatus(string status)
+    {
+        Status = status;
+    }
+
+    public void SetPhoneNumber(string? phoneNumber)
+    {
+        PhoneNumber = phoneNumber;
     }
 }
 

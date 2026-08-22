@@ -8,7 +8,10 @@ import Badge from '@/components/Common/Badge'
 import Modal from '@/components/Common/Modal'
 import { Plus, Search, Edit2, Trash2, Eye, ChevronLeft, ChevronRight } from 'lucide-react'
 import { employeesApi } from '@/api/employees'
-import type { Employee } from '@/types'
+import { departmentsApi } from '@/api/departments'
+import { rolesApi } from '@/api/roles'
+import type { Employee, Department, Role } from '@/types'
+import { formatDateIST } from '@/utils/format'
 import toast from 'react-hot-toast'
 
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100]
@@ -17,8 +20,11 @@ const STATUSES = ['Active', 'Inactive', 'Terminated']
 export default function EmployeesPage() {
   const navigate = useNavigate()
   const [employees, setEmployees] = useState<Employee[]>([])
+  const [departments, setDepartments] = useState<Department[]>([])
+  const [roles, setRoles] = useState<Role[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('All')
+  const [departmentFilter, setDepartmentFilter] = useState<string>('All')
   const [sortBy, setSortBy] = useState<keyof Employee>('firstName')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
   const [currentPage, setCurrentPage] = useState(1)
@@ -35,16 +41,40 @@ export default function EmployeesPage() {
     email: '',
     phoneNumber: '',
     departmentId: '',
+    roleId: '',
+    managerId: '',
+    teamLeadId: '',
   })
 
   useEffect(() => {
     loadEmployees()
+    loadDepartments()
+    loadRoles()
   }, [])
+
+  const loadDepartments = async () => {
+    try {
+      const depts = await departmentsApi.getAllSimple()
+      setDepartments(Array.isArray(depts) ? depts : [])
+    } catch (error) {
+      console.error('Failed to load departments:', error)
+    }
+  }
+
+  const loadRoles = async () => {
+    try {
+      const allRoles = await rolesApi.getAllSimple()
+      setRoles(Array.isArray(allRoles) ? allRoles : [])
+    } catch (error) {
+      console.error('Failed to load roles:', error)
+    }
+  }
 
   const loadEmployees = async () => {
     try {
       const response = await employeesApi.getAll(1, 1000)
-      setEmployees(response.items)
+      const list = Array.isArray(response) ? response : (response?.items || [])
+      setEmployees(list)
       setCurrentPage(1)
     } catch (error) {
       toast.error('Failed to load employees')
@@ -70,37 +100,39 @@ export default function EmployeesPage() {
       filtered = filtered.filter((emp) => emp.status === statusFilter)
     }
 
+    // Apply department filter
+    if (departmentFilter !== 'All') {
+      filtered = filtered.filter((emp) => emp.departmentId === departmentFilter)
+    }
+
     // Apply sorting
     filtered.sort((a, b) => {
-      const aValue = a[sortBy]
-      const bValue = b[sortBy]
-
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return sortOrder === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue)
-      }
-
-      if (aValue === undefined || bValue === undefined) return 0
-      return sortOrder === 'asc' ? (aValue > bValue ? 1 : -1) : bValue > aValue ? 1 : -1
+      let aVal = a[sortBy] ?? ''
+      let bVal = b[sortBy] ?? ''
+      if (typeof aVal === 'string') aVal = aVal.toLowerCase()
+      if (typeof bVal === 'string') bVal = bVal.toLowerCase()
+      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1
+      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1
+      return 0
     })
 
     return filtered
-  }, [employees, searchTerm, statusFilter, sortBy, sortOrder])
+  }, [employees, searchTerm, statusFilter, departmentFilter, sortBy, sortOrder])
 
-  // Paginate
-  const totalPages = Math.ceil(filteredAndSortedEmployees.length / itemsPerPage)
-  const paginatedEmployees = filteredAndSortedEmployees.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  )
+  const totalPages = Math.ceil(filteredAndSortedEmployees.length / itemsPerPage) || 1
+  const paginatedEmployees = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage
+    return filteredAndSortedEmployees.slice(start, start + itemsPerPage)
+  }, [filteredAndSortedEmployees, currentPage, itemsPerPage])
 
-  const validateForm = (): boolean => {
+  const validateForm = () => {
     const newErrors: Record<string, string> = {}
-
     if (!formData.firstName.trim()) newErrors.firstName = 'First name is required'
     if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required'
-    if (!formData.email.trim()) newErrors.email = 'Email is required'
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Invalid email format'
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required'
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Invalid email address'
     }
     if (!formData.departmentId.trim()) newErrors.departmentId = 'Department is required'
 
@@ -116,6 +148,9 @@ export default function EmployeesPage() {
       email: '',
       phoneNumber: '',
       departmentId: '',
+      roleId: '',
+      managerId: '',
+      teamLeadId: '',
     })
     setErrors({})
     setIsModalOpen(true)
@@ -129,6 +164,9 @@ export default function EmployeesPage() {
       email: employee.email,
       phoneNumber: employee.phoneNumber || '',
       departmentId: employee.departmentId,
+      roleId: employee.roleId || '',
+      managerId: employee.managerId || '',
+      teamLeadId: employee.teamLeadId || '',
     })
     setErrors({})
     setIsModalOpen(true)
@@ -150,15 +188,22 @@ export default function EmployeesPage() {
           email: formData.email,
           phoneNumber: formData.phoneNumber,
           departmentId: formData.departmentId,
+          roleId: formData.roleId || undefined,
+          managerId: formData.managerId || undefined,
+          teamLeadId: formData.teamLeadId || undefined,
         } as Partial<Employee>)
         toast.success('Employee updated successfully')
       } else {
         await employeesApi.create({
+          employeeCode: 'EMP-' + Math.floor(100000 + Math.random() * 900000),
           firstName: formData.firstName,
           lastName: formData.lastName,
           email: formData.email,
           phoneNumber: formData.phoneNumber,
           departmentId: formData.departmentId,
+          roleId: formData.roleId || undefined,
+          managerId: formData.managerId || undefined,
+          teamLeadId: formData.teamLeadId || undefined,
         } as any)
         toast.success('Employee created successfully')
       }
@@ -199,14 +244,6 @@ export default function EmployeesPage() {
     }
   }
 
-  const formatDate = (date: string) => {
-    return new Intl.DateTimeFormat('en-IN', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    }).format(new Date(date))
-  }
-
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -225,11 +262,11 @@ export default function EmployeesPage() {
         {/* Search and Filters */}
         <Card>
           <div className="space-y-4">
-            <div className="flex gap-4">
-              <div className="flex-1">
+            <div className="flex gap-4 flex-wrap md:flex-nowrap">
+              <div className="flex-1 min-w-[200px]">
                 <Input
-                  icon={<Search className="w-5 h-5" />}
-                  placeholder="Search by name, email, or code..."
+                  icon={<Search className="w-4 h-4" />}
+                  placeholder="Search by name, email, code..."
                   value={searchTerm}
                   onChange={(e) => {
                     setSearchTerm(e.target.value)
@@ -237,161 +274,232 @@ export default function EmployeesPage() {
                   }}
                 />
               </div>
-              <select
-                value={statusFilter}
-                onChange={(e) => {
-                  setStatusFilter(e.target.value)
-                  setCurrentPage(1)
-                }}
-                className="px-4 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="All">All Status</option>
-                {STATUSES.map((status) => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={itemsPerPage}
-                onChange={(e) => {
-                  setItemsPerPage(Number(e.target.value))
-                  setCurrentPage(1)
-                }}
-                className="px-4 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                {ITEMS_PER_PAGE_OPTIONS.map((size) => (
-                  <option key={size} value={size}>
-                    {size} per page
-                  </option>
-                ))}
-              </select>
+              <div className="w-44">
+                <select
+                  value={departmentFilter}
+                  onChange={(e) => {
+                    setDepartmentFilter(e.target.value)
+                    setCurrentPage(1)
+                  }}
+                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+                >
+                  <option value="All">All Departments</option>
+                  {departments.map((dept) => (
+                    <option key={dept.id} value={dept.id}>
+                      {dept.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="w-36">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => {
+                    setStatusFilter(e.target.value)
+                    setCurrentPage(1)
+                  }}
+                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+                >
+                  <option value="All">All Status</option>
+                  {STATUSES.map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="w-28">
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value))
+                    setCurrentPage(1)
+                  }}
+                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+                >
+                  {ITEMS_PER_PAGE_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt} / page
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
         </Card>
 
         {/* Employees Table */}
         <Card>
-          {paginatedEmployees.length === 0 ? (
-            <div className="py-12 text-center">
-              <p className="text-neutral-500">No employees found</p>
-            </div>
-          ) : (
-            <>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-neutral-200">
-                      <th className="px-6 py-3 text-left text-xs font-medium text-neutral-600 uppercase tracking-wider cursor-pointer hover:bg-neutral-50" onClick={() => handleSort('employeeCode')}>
-                        Code {sortBy === 'employeeCode' && (sortOrder === 'asc' ? '↑' : '↓')}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-neutral-600 uppercase tracking-wider cursor-pointer hover:bg-neutral-50" onClick={() => handleSort('firstName')}>
-                        Name {sortBy === 'firstName' && (sortOrder === 'asc' ? '↑' : '↓')}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-neutral-600 uppercase tracking-wider cursor-pointer hover:bg-neutral-50" onClick={() => handleSort('email')}>
-                        Email {sortBy === 'email' && (sortOrder === 'asc' ? '↑' : '↓')}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-neutral-600 uppercase tracking-wider">Phone</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-neutral-600 uppercase tracking-wider cursor-pointer hover:bg-neutral-50" onClick={() => handleSort('status')}>
-                        Status {sortBy === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-neutral-600 uppercase tracking-wider">Created</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-neutral-600 uppercase tracking-wider">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginatedEmployees.map((employee) => (
-                      <tr key={employee.id} className="border-b border-neutral-200 hover:bg-neutral-50">
-                        <td className="px-6 py-4 text-sm text-neutral-900">{employee.employeeCode}</td>
-                        <td className="px-6 py-4 text-sm font-medium text-neutral-900">
-                          {employee.firstName} {employee.lastName}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-neutral-600">{employee.email}</td>
-                        <td className="px-6 py-4 text-sm text-neutral-600">{employee.phoneNumber || '-'}</td>
-                        <td className="px-6 py-4 text-sm">
-                          <Badge
-                            label={employee.status}
-                            variant={
-                              employee.status === 'Active'
-                                ? 'success'
-                                : employee.status === 'Inactive'
-                                  ? 'warning'
-                                  : 'danger'
-                            }
-                          />
-                        </td>
-                        <td className="px-6 py-4 text-sm text-neutral-600">{formatDate(employee.createdAtUtc)}</td>
-                        <td className="px-6 py-4 text-sm">
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleViewDetails(employee.id)}
-                              className="p-1 hover:bg-blue-100 rounded text-blue-600 transition-colors"
-                              title="View Details"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleOpenEdit(employee)}
-                              className="p-1 hover:bg-amber-100 rounded text-amber-600 transition-colors"
-                              title="Edit"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteClick(employee.id)}
-                              className="p-1 hover:bg-red-100 rounded text-red-600 transition-colors"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-neutral-200 bg-neutral-50">
+                  <th
+                    onClick={() => handleSort('employeeCode')}
+                    className="px-6 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider cursor-pointer hover:bg-neutral-100"
+                  >
+                    Code
+                  </th>
+                  <th
+                    onClick={() => handleSort('firstName')}
+                    className="px-6 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider cursor-pointer hover:bg-neutral-100"
+                  >
+                    Name
+                  </th>
+                  <th
+                    onClick={() => handleSort('departmentName')}
+                    className="px-6 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider cursor-pointer hover:bg-neutral-100"
+                  >
+                    Department
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">
+                    Role
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">
+                    Reporting Manager / Lead
+                  </th>
+                  <th
+                    onClick={() => handleSort('status')}
+                    className="px-6 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider cursor-pointer hover:bg-neutral-100"
+                  >
+                    Status
+                  </th>
+                  <th
+                    onClick={() => handleSort('createdAtUtc')}
+                    className="px-6 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider cursor-pointer hover:bg-neutral-100"
+                  >
+                    Joined
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-200">
+                {paginatedEmployees.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-6 py-8 text-center text-neutral-500">
+                      No employees found.
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedEmployees.map((employee) => (
+                    <tr key={employee.id} className="hover:bg-neutral-50 transition-colors">
+                      <td className="px-6 py-4 text-sm font-medium text-primary-600">{employee.employeeCode}</td>
+                      <td className="px-6 py-4 text-sm text-neutral-900">
+                        <div className="font-semibold">{employee.firstName} {employee.lastName}</div>
+                        <div className="text-xs text-neutral-500">{employee.email}</div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-neutral-600">{employee.departmentName || '-'}</td>
+                      <td className="px-6 py-4 text-sm">
+                        {employee.roles && employee.roles.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {employee.roles.map((r, i) => (
+                              <Badge key={i} label={typeof r === 'string' ? r : r.name} variant="info" />
+                            ))}
                           </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                        ) : employee.roleName ? (
+                          <Badge label={employee.roleName} variant="info" />
+                        ) : (
+                          <span className="text-neutral-400 text-xs">No role</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-neutral-600">
+                        {employee.managerName ? (
+                          <div className="text-xs">
+                            <span className="font-medium text-neutral-800">Mgr:</span> {employee.managerName}
+                          </div>
+                        ) : null}
+                        {employee.teamLeadName ? (
+                          <div className="text-xs text-neutral-500">
+                            <span className="font-medium text-neutral-800">Lead:</span> {employee.teamLeadName}
+                          </div>
+                        ) : null}
+                        {!employee.managerName && !employee.teamLeadName && <span className="text-neutral-400 text-xs">-</span>}
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        <Badge
+                          label={employee.status}
+                          variant={
+                            employee.status === 'Active'
+                              ? 'success'
+                              : employee.status === 'Inactive'
+                                ? 'warning'
+                                : 'danger'
+                          }
+                        />
+                      </td>
+                      <td className="px-6 py-4 text-sm text-neutral-600">{formatDateIST(employee.createdAtUtc)}</td>
+                      <td className="px-6 py-4 text-sm">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleViewDetails(employee.id)}
+                            className="p-1 hover:bg-blue-100 rounded text-blue-600 transition-colors"
+                            title="View Details"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleOpenEdit(employee)}
+                            className="p-1 hover:bg-amber-100 rounded text-amber-600 transition-colors"
+                            title="Edit"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteClick(employee.id)}
+                            className="p-1 hover:bg-red-100 rounded text-red-600 transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
 
-              {/* Pagination */}
-              <div className="flex items-center justify-between mt-4 pt-4 border-t border-neutral-200">
-                <div className="text-sm text-neutral-600">
-                  Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filteredAndSortedEmployees.length)} of{' '}
-                  {filteredAndSortedEmployees.length}
-                </div>
-                <div className="flex gap-2">
+          {/* Pagination */}
+          <div className="flex items-center justify-between mt-4 pt-4 border-t border-neutral-200">
+            <div className="text-sm text-neutral-600">
+              Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filteredAndSortedEmployees.length)} of{' '}
+              {filteredAndSortedEmployees.length}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="p-2 hover:bg-neutral-100 rounded text-neutral-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                   <button
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className="p-2 hover:bg-neutral-100 rounded text-neutral-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`px-3 py-1 rounded text-sm ${
+                      currentPage === page
+                        ? 'bg-primary-600 text-white'
+                        : 'hover:bg-neutral-100 text-neutral-600'
+                    }`}
                   >
-                    <ChevronLeft className="w-4 h-4" />
+                    {page}
                   </button>
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                      <button
-                        key={page}
-                        onClick={() => setCurrentPage(page)}
-                        className={`px-3 py-1 rounded text-sm ${
-                          currentPage === page
-                            ? 'bg-primary-600 text-white'
-                            : 'hover:bg-neutral-100 text-neutral-600'
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                    className="p-2 hover:bg-neutral-100 rounded text-neutral-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
+                ))}
               </div>
-            </>
-          )}
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="p-2 hover:bg-neutral-100 rounded text-neutral-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         </Card>
       </div>
 
@@ -399,14 +507,14 @@ export default function EmployeesPage() {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={selectedEmployee ? 'Edit Employee' : 'Add Employee'}
+        title={selectedEmployee ? 'Edit Employee' : 'Add New Employee'}
         footer={
           <>
             <Button variant="outline" onClick={() => setIsModalOpen(false)} disabled={isSubmitting}>
               Cancel
             </Button>
             <Button onClick={handleSave} disabled={isSubmitting}>
-              {isSubmitting ? 'Saving...' : 'Save'}
+              {isSubmitting ? 'Saving...' : 'Save Employee'}
             </Button>
           </>
         }
@@ -415,7 +523,7 @@ export default function EmployeesPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Input
-                label="First Name"
+                label="First Name *"
                 value={formData.firstName}
                 onChange={(e) => {
                   setFormData({ ...formData, firstName: e.target.value })
@@ -426,7 +534,7 @@ export default function EmployeesPage() {
             </div>
             <div>
               <Input
-                label="Last Name"
+                label="Last Name *"
                 value={formData.lastName}
                 onChange={(e) => {
                   setFormData({ ...formData, lastName: e.target.value })
@@ -438,7 +546,7 @@ export default function EmployeesPage() {
           </div>
 
           <Input
-            label="Email"
+            label="Email *"
             type="email"
             value={formData.email}
             onChange={(e) => {
@@ -454,25 +562,82 @@ export default function EmployeesPage() {
             onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
           />
 
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-2">Department</label>
-            <select
-              value={formData.departmentId}
-              onChange={(e) => {
-                setFormData({ ...formData, departmentId: e.target.value })
-                if (errors.departmentId) setErrors({ ...errors, departmentId: '' })
-              }}
-              className={`w-full px-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 ${
-                errors.departmentId ? 'border-red-500' : 'border-neutral-300'
-              }`}
-            >
-              <option value="">Select Department</option>
-              {/* TODO: Load departments from API */}
-              <option value="550e8400-e29b-41d4-a716-446655440000">Engineering</option>
-              <option value="550e8400-e29b-41d4-a716-446655440001">HR</option>
-              <option value="550e8400-e29b-41d4-a716-446655440002">Finance</option>
-            </select>
-            {errors.departmentId && <p className="text-red-500 text-xs mt-1">{errors.departmentId}</p>}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">Department *</label>
+              <select
+                value={formData.departmentId}
+                onChange={(e) => {
+                  setFormData({ ...formData, departmentId: e.target.value })
+                  if (errors.departmentId) setErrors({ ...errors, departmentId: '' })
+                }}
+                className={`w-full px-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white ${
+                  errors.departmentId ? 'border-red-500' : 'border-neutral-300'
+                }`}
+              >
+                <option value="">Select Department</option>
+                {departments.map((dept) => (
+                  <option key={dept.id} value={dept.id}>
+                    {dept.name}
+                  </option>
+                ))}
+              </select>
+              {errors.departmentId && <p className="text-red-500 text-xs mt-1">{errors.departmentId}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">Role / Designation</label>
+              <select
+                value={formData.roleId}
+                onChange={(e) => setFormData({ ...formData, roleId: e.target.value })}
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+              >
+                <option value="">Select Role (Optional)</option>
+                {roles.map((role) => (
+                  <option key={role.id} value={role.id}>
+                    {role.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">Reporting Manager</label>
+              <select
+                value={formData.managerId}
+                onChange={(e) => setFormData({ ...formData, managerId: e.target.value })}
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+              >
+                <option value="">None / Direct Report</option>
+                {employees
+                  .filter((emp) => !selectedEmployee || emp.id !== selectedEmployee.id)
+                  .map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.firstName} {emp.lastName} ({emp.employeeCode})
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">Team Lead</label>
+              <select
+                value={formData.teamLeadId}
+                onChange={(e) => setFormData({ ...formData, teamLeadId: e.target.value })}
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+              >
+                <option value="">None</option>
+                {employees
+                  .filter((emp) => !selectedEmployee || emp.id !== selectedEmployee.id)
+                  .map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.firstName} {emp.lastName} ({emp.employeeCode})
+                    </option>
+                  ))}
+              </select>
+            </div>
           </div>
         </div>
       </Modal>

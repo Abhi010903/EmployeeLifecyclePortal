@@ -8,7 +8,7 @@ namespace EmployeeLifecyclePortal.Application.Queries.Dashboard.Handlers;
 
 /// <summary>
 /// Handles the GetDashboardSummaryQuery to retrieve key metrics from the database.
-/// Calculates counts for employees, departments, leave, attendance, and payroll.
+/// Calculates counts for employees, departments, leave, attendance, tasks, staffing, and payroll.
 /// </summary>
 public sealed class GetDashboardSummaryQueryHandler
     : IRequestHandler<GetDashboardSummaryQuery, DashboardSummaryDto>
@@ -35,32 +35,34 @@ public sealed class GetDashboardSummaryQueryHandler
         var totalDepartments = await _context.Departments.CountAsync(cancellationToken);
         var totalRoles = await _context.Roles.CountAsync(cancellationToken);
 
-        // Leave metrics (use 0 if LeaveRequests table doesn't exist)
+        // Leave metrics
         int employeesOnLeave = 0;
         int pendingLeaveRequests = 0;
         try
         {
+            var nowUtc = DateTime.UtcNow;
             employeesOnLeave = await _context.LeaveRequests
-                .Where(lr => lr.Status == "Approved" &&
-                             lr.StartDateUtc <= DateTime.UtcNow &&
-                             lr.EndDateUtc >= DateTime.UtcNow)
+                .Where(lr => (lr.Status == "Approved" || lr.Status == "ManagerApproved") &&
+                             lr.StartDateUtc <= nowUtc &&
+                             lr.EndDateUtc >= nowUtc)
                 .Select(lr => lr.EmployeeId)
                 .Distinct()
                 .CountAsync(cancellationToken);
 
             pendingLeaveRequests = await _context.LeaveRequests
-                .CountAsync(lr => lr.Status == "Pending", cancellationToken);
+                .CountAsync(lr => lr.Status == "Pending" || lr.Status == "ManagerApproved", cancellationToken);
         }
         catch
         {
-            // LeaveRequests table may not exist in this database schema
+            // LeaveRequests table fallback
         }
 
-        // Today's attendance (check-ins for today) (use 0 if Attendances table doesn't exist)
+        // Today's attendance (distinct check-ins for today)
         var todayStart = DateTime.UtcNow.Date;
         var todayEnd = todayStart.AddDays(1);
 
         int todayAttendance = 0;
+        int activeWorkSessions = 0;
         try
         {
             todayAttendance = await _context.Attendances
@@ -68,13 +70,47 @@ public sealed class GetDashboardSummaryQueryHandler
                 .Select(a => a.EmployeeId)
                 .Distinct()
                 .CountAsync(cancellationToken);
+
+            activeWorkSessions = await _context.Attendances
+                .CountAsync(a => a.CheckOutTimeUtc == null, cancellationToken);
         }
         catch
         {
-            // Attendances table may not exist in this database schema
+            // Attendances table fallback
         }
 
-        // Payroll due (sum of all pending/unpaid salaries from Payslips) (use 0 if Payslips table doesn't exist)
+        // Tasks breakdown
+        int pendingTasks = 0;
+        int inProgressTasks = 0;
+        int overdueTasks = 0;
+        int completedTasks = 0;
+        try
+        {
+            var allTasks = await _context.WorkTasks.AsNoTracking().ToListAsync(cancellationToken);
+            var now = DateTime.UtcNow;
+            pendingTasks = allTasks.Count(t => t.Status == "Pending");
+            inProgressTasks = allTasks.Count(t => t.Status == "InProgress");
+            completedTasks = allTasks.Count(t => t.Status == "Completed");
+            overdueTasks = allTasks.Count(t => t.DeadlineUtc < now && t.Status != "Completed");
+        }
+        catch
+        {
+            // WorkTasks table fallback
+        }
+
+        // Staffing requests count
+        int pendingStaffingRequests = 0;
+        try
+        {
+            pendingStaffingRequests = await _context.StaffingRequests
+                .CountAsync(sr => sr.Status == "Pending", cancellationToken);
+        }
+        catch
+        {
+            // StaffingRequests table fallback
+        }
+
+        // Payroll due
         decimal totalPayrollDue = 0;
         try
         {
@@ -84,10 +120,10 @@ public sealed class GetDashboardSummaryQueryHandler
         }
         catch
         {
-            // Payslips table may not exist in this database schema
+            // Payslips table fallback
         }
 
-        // Calculate trends (comparing with previous month/period)
+        // Calculate trends
         var previousMonthStart = DateTime.UtcNow.AddMonths(-1).Date;
         var currentMonthStart = DateTime.UtcNow.Date;
 
@@ -99,7 +135,6 @@ public sealed class GetDashboardSummaryQueryHandler
             ? ((decimal)(activeEmployees - previousMonthEmployeesCount) / previousMonthEmployeesCount) * 100
             : 0;
 
-        // Attendance trend (compared to average)
         decimal attendanceTrend = 0;
         try
         {
@@ -115,15 +150,13 @@ public sealed class GetDashboardSummaryQueryHandler
         }
         catch
         {
-            // Attendances table may not exist
         }
 
-        // Leave trend (pending vs previous period)
         decimal leaveTrend = 0;
         try
         {
             var previousPeriodPendingLeave = await _context.LeaveRequests
-                .Where(lr => lr.Status == "Pending" &&
+                .Where(lr => (lr.Status == "Pending" || lr.Status == "ManagerApproved") &&
                              lr.CreatedAtUtc < currentMonthStart)
                 .CountAsync(cancellationToken);
 
@@ -133,10 +166,8 @@ public sealed class GetDashboardSummaryQueryHandler
         }
         catch
         {
-            // LeaveRequests table may not exist
         }
 
-        // Payroll trend (compared to previous month)
         decimal payrollTrend = 0;
         try
         {
@@ -152,7 +183,6 @@ public sealed class GetDashboardSummaryQueryHandler
         }
         catch
         {
-            // Payslips table may not exist
         }
 
         return new DashboardSummaryDto
@@ -165,6 +195,12 @@ public sealed class GetDashboardSummaryQueryHandler
             EmployeesOnLeave = employeesOnLeave,
             PendingLeaveRequests = pendingLeaveRequests,
             TodayAttendance = todayAttendance,
+            ActiveWorkSessions = activeWorkSessions,
+            PendingStaffingRequests = pendingStaffingRequests,
+            PendingTasks = pendingTasks,
+            InProgressTasks = inProgressTasks,
+            OverdueTasks = overdueTasks,
+            CompletedTasks = completedTasks,
             TotalPayrollDue = totalPayrollDue,
             EmployeeTrend = Math.Round(employeeTrend, 2),
             AttendanceTrend = Math.Round(attendanceTrend, 2),

@@ -12,6 +12,8 @@ public sealed class CreateAssetCommand : IRequest<AssetDto>
     public decimal PurchaseValue { get; set; }
     public DateTime PurchaseDateUtc { get; set; }
 
+    public CreateAssetCommand() { }
+
     public CreateAssetCommand(string code, string name, string type, string serial, decimal value, DateTime purchaseDate)
     {
         AssetCode = code;

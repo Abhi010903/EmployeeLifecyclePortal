@@ -2,7 +2,7 @@ namespace EmployeeLifecyclePortal.Application.DTOs.Dashboard;
 
 /// <summary>
 /// Summary statistics for the enterprise dashboard.
-/// Contains key metrics about employees, attendance, and leave.
+/// Contains key metrics about employees, attendance, leave, tasks, and staffing.
 /// </summary>
 public sealed class DashboardSummaryDto
 {
@@ -42,9 +42,27 @@ public sealed class DashboardSummaryDto
     public int PendingLeaveRequests { get; set; }
 
     /// <summary>
-    /// Number of employees present today.
+    /// Number of distinct employees present today.
     /// </summary>
     public int TodayAttendance { get; set; }
+
+    /// <summary>
+    /// Number of active work sessions currently open (checked in without checkout).
+    /// </summary>
+    public int ActiveWorkSessions { get; set; }
+
+    /// <summary>
+    /// Number of pending staffing requests from managers.
+    /// </summary>
+    public int PendingStaffingRequests { get; set; }
+
+    /// <summary>
+    /// Tasks breakdown
+    /// </summary>
+    public int PendingTasks { get; set; }
+    public int InProgressTasks { get; set; }
+    public int OverdueTasks { get; set; }
+    public int CompletedTasks { get; set; }
 
     /// <summary>
     /// Total payroll amount due (in currency units).

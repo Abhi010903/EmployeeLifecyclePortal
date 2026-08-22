@@ -6,7 +6,7 @@ services:
     image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
       ACCEPT_EULA: "Y"
-      SA_PASSWORD: "Your@SecurePass123"
+      SA_PASSWORD: "${MSSQL_SA_PASSWORD}"
       MSSQL_PID: "Express"
     ports:
       - "1433:1433"
@@ -15,7 +15,7 @@ services:
     networks:
       - elp-network
     healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'Your@SecurePass123' -Q 'SELECT 1'"]
+      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD}\" -Q 'SELECT 1'"]
       interval: 10s
       timeout: 3s
       retries: 40
@@ -29,8 +29,8 @@ services:
       - "5000:80"
     environment:
       ASPNETCORE_ENVIRONMENT: "Production"
-      ConnectionStrings__DefaultConnection: "Server=mssql;Database=EmployeeLifecyclePortalDb;User Id=sa;Password=Your@SecurePass123;Encrypt=false;"
-      Jwt__Secret: "your-secret-key-min-32-characters-required-12345"
+      ConnectionStrings__DefaultConnection: "Server=mssql;Database=EmployeeLifecyclePortalDb;User Id=sa;Password=$${MSSQL_SA_PASSWORD};Encrypt=false;"
+      Jwt__Secret: "$${JWT_SECRET}"
       Jwt__Issuer: "EmployeeLifecyclePortal"
       Jwt__Audience: "EmployeeLifecyclePortalClient"
     depends_on:

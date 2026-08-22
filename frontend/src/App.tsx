@@ -17,6 +17,12 @@ import RoleDetailsPage from '@/pages/RoleDetailsPage'
 import AttendancePage from '@/pages/AttendancePage'
 import LeavePage from '@/pages/LeavePage'
 import PayrollPage from '@/pages/PayrollPage'
+import PerformancePage from '@/pages/PerformancePage'
+import AssetPage from '@/pages/AssetPage'
+import RecruitmentPage from '@/pages/RecruitmentPage'
+import ReportsPage from '@/pages/ReportsPage'
+import SettingsPage from '@/pages/SettingsPage'
+import AuthCallbackPage from '@/pages/AuthCallbackPage'
 
 export default function App() {
   const { checkAuth } = useAuthStore()
@@ -31,6 +37,7 @@ export default function App() {
         <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
           {/* Protected Routes */}
           <Route
@@ -128,6 +135,51 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <PayrollPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/performance"
+            element={
+              <ProtectedRoute>
+                <PerformancePage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/assets"
+            element={
+              <ProtectedRoute>
+                <AssetPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/recruitment"
+            element={
+              <ProtectedRoute>
+                <RecruitmentPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/reports"
+            element={
+              <ProtectedRoute>
+                <ReportsPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <SettingsPage />
               </ProtectedRoute>
             }
           />

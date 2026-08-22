@@ -33,7 +33,12 @@ try
             .ReadFrom.Services(services)
             .Enrich.FromLogContext());
 
-    builder.Services.AddControllers();
+    builder.Services.AddControllers()
+        .AddJsonOptions(options =>
+        {
+            options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+            options.JsonSerializerOptions.Converters.Add(new EmployeeLifecyclePortal.Api.Infrastructure.UtcDateTimeJsonConverter());
+        });
 
     builder.Services.AddEndpointsApiExplorer();
 
@@ -60,6 +65,29 @@ try
 
     builder.Services.AddScoped<ICorrelationIdAccessor, CorrelationIdAccessor>();
 
+    var jwtKey = builder.Configuration["Jwt:Key"] 
+        ?? builder.Configuration["Jwt:Secret"] 
+        ?? builder.Configuration["JWT_SECRET"];
+
+    if (string.IsNullOrWhiteSpace(jwtKey) || jwtKey == "${JWT_SECRET}" || jwtKey.StartsWith("<"))
+    {
+        var envSecret = Environment.GetEnvironmentVariable("JWT_SECRET")
+            ?? Environment.GetEnvironmentVariable("Jwt__Key")
+            ?? Environment.GetEnvironmentVariable("Jwt__Secret");
+
+        if (!string.IsNullOrWhiteSpace(envSecret))
+        {
+            jwtKey = envSecret;
+        }
+        else
+        {
+            throw new InvalidOperationException("JWT signing key is not configured. Please set the 'JWT_SECRET' environment variable or configure 'Jwt:Key' / 'Jwt:Secret'.");
+        }
+    }
+
+    var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "EmployeeLifecyclePortal";
+    var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "EmployeeLifecyclePortalUsers";
+
     builder.Services
         .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(options =>
@@ -71,17 +99,9 @@ try
                     ValidateAudience = true,
                     ValidateLifetime = true,
                     ValidateIssuerSigningKey = true,
-
-                    ValidIssuer =
-                        builder.Configuration["Jwt:Issuer"],
-
-                    ValidAudience =
-                        builder.Configuration["Jwt:Audience"],
-
-                    IssuerSigningKey =
-                        new SymmetricSecurityKey(
-                            Encoding.UTF8.GetBytes(
-                                builder.Configuration["Jwt:Key"]!))
+                    ValidIssuer = jwtIssuer,
+                    ValidAudience = jwtAudience,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
                 };
         });
 
@@ -94,6 +114,14 @@ try
         options.AddPolicy(
             Permissions.Manager,
             policy => policy.RequireRole("Manager", "Admin"));
+
+        options.AddPolicy(
+            Permissions.TeamLead,
+            policy => policy.RequireRole("Team Lead", "TeamLead", "Manager", "Admin"));
+
+        options.AddPolicy(
+            Permissions.Supervisor,
+            policy => policy.RequireRole("Team Lead", "TeamLead", "Manager", "Admin", "HR"));
 
         options.AddPolicy(
             Permissions.HR,
@@ -117,6 +145,9 @@ try
             tags: new[] { "database", "sql" });
 
     var app = builder.Build();
+
+    // Initialize database schema and essential seeds
+    await EmployeeLifecyclePortal.Infrastructure.Persistence.DatabaseSeeder.InitializeDatabaseAsync(app.Services);
 
     app.UseMiddleware<CorrelationIdMiddleware>();
 

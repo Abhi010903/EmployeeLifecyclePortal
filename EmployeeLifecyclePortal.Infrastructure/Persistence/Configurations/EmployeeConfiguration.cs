@@ -56,7 +56,7 @@ public sealed class EmployeeConfiguration
             .WithMany()
             .HasForeignKey(x => x.ManagerId)
             .IsRequired(false)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.Restrict);
 
         // ── Roles relationship ─────────────────────────────────────────────
         builder.HasMany(x => x.EmployeeRoles)

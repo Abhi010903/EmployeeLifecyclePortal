@@ -25,19 +25,39 @@ public sealed class ApproveLeaveCommandHandler
             .FirstOrDefaultAsync(lr => lr.Id == request.LeaveRequestId, cancellationToken)
             ?? throw new InvalidOperationException($"Leave request with ID {request.LeaveRequestId} not found");
 
-        leaveRequest.Approve(request.ApprovedByUserId);
-
-        // Update leave balance
-        var leaveBalance = await _context.LeaveBalances
-            .FirstOrDefaultAsync(
-                lb => lb.EmployeeId == leaveRequest.EmployeeId && 
-                      lb.LeaveTypeId == leaveRequest.LeaveTypeId,
-                cancellationToken);
-
-        if (leaveBalance != null)
+        if (leaveRequest.EmployeeId == request.ApprovedByUserId)
         {
-            leaveBalance.UseLeave(leaveRequest.GetDaysRequested());
-            _context.LeaveBalances.Update(leaveBalance);
+            throw new InvalidOperationException("Users are not permitted to self-approve their own leave requests.");
+        }
+
+        // Get approver user to check role
+        var approverUser = await _context.ApplicationUsers
+            .FirstOrDefaultAsync(u => u.Id == request.ApprovedByUserId, cancellationToken);
+
+        var approverRole = approverUser?.Role ?? "Admin";
+
+        if ((approverRole == "Manager" || approverRole == "Team Lead" || approverRole == "TeamLead") && leaveRequest.Status == "Pending")
+        {
+            // Manager stage approval -> moves to ManagerApproved (pending final Admin approval)
+            leaveRequest.ManagerApprove(request.ApprovedByUserId);
+        }
+        else
+        {
+            // Admin final approval (or direct Admin approval) -> Approved
+            leaveRequest.FinalApprove(request.ApprovedByUserId);
+
+            // Update leave balance upon final approval
+            var leaveBalance = await _context.LeaveBalances
+                .FirstOrDefaultAsync(
+                    lb => lb.EmployeeId == leaveRequest.EmployeeId && 
+                          lb.LeaveTypeId == leaveRequest.LeaveTypeId,
+                    cancellationToken);
+
+            if (leaveBalance != null)
+            {
+                leaveBalance.UseLeave(leaveRequest.GetDaysRequested());
+                _context.LeaveBalances.Update(leaveBalance);
+            }
         }
 
         _context.LeaveRequests.Update(leaveRequest);
@@ -58,6 +78,10 @@ public sealed class ApproveLeaveCommandHandler
             Status = leaveRequest.Status,
             Reason = leaveRequest.Reason,
             ApprovedByUserId = leaveRequest.ApprovedByUserId,
+            ManagerApprovedByUserId = leaveRequest.ManagerApprovedByUserId,
+            ManagerApprovedAtUtc = leaveRequest.ManagerApprovedAtUtc,
+            FinalApprovedByUserId = leaveRequest.FinalApprovedByUserId,
+            FinalApprovedAtUtc = leaveRequest.FinalApprovedAtUtc,
             CreatedAtUtc = leaveRequest.CreatedAtUtc,
             CreatedBy = leaveRequest.CreatedBy,
             LastModifiedAtUtc = leaveRequest.LastModifiedAtUtc,

@@ -3,7 +3,7 @@ import type { User } from '@/types'
 
 interface AuthStore {
   user: User | null
-  token: string |null
+  token: string | null
   isAuthenticated: boolean
 
   setAuth: (user: User, token: string) => void
@@ -22,11 +22,10 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
   setAuth: (user, token) => {
     localStorage.setItem('token', token)
-
-    localStorage.setItem(
-      'user',
-      JSON.stringify(user)
-    )
+    localStorage.setItem('user', JSON.stringify(user))
+    if (user && user.id) {
+      localStorage.setItem('userId', user.id)
+    }
 
     set({
       user,
@@ -37,8 +36,8 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
   logout: () => {
     localStorage.removeItem('token')
-
     localStorage.removeItem('user')
+    localStorage.removeItem('userId')
 
     set({
       user: null,
@@ -48,18 +47,25 @@ export const useAuthStore = create<AuthStore>((set) => ({
   },
 
   checkAuth: () => {
-    const token =
-      localStorage.getItem('token')
-
-    const user =
-      localStorage.getItem('user')
+    const token = localStorage.getItem('token')
+    const user = localStorage.getItem('user')
 
     if (token && user) {
-      set({
-        token,
-        user: JSON.parse(user),
-        isAuthenticated: true,
-      })
+      try {
+        const parsedUser = JSON.parse(user)
+        if (parsedUser && parsedUser.id) {
+          localStorage.setItem('userId', parsedUser.id)
+        }
+        set({
+          token,
+          user: parsedUser,
+          isAuthenticated: true,
+        })
+      } catch {
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        localStorage.removeItem('userId')
+      }
     }
   },
 }))

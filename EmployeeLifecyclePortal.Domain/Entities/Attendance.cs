@@ -68,9 +68,17 @@ public class LeaveRequest : AuditableEntity
     public Guid LeaveTypeId { get; private set; }
     public DateTime StartDateUtc { get; private set; }
     public DateTime EndDateUtc { get; private set; }
-    public string Status { get; private set; } = "Pending";
+    public string Status { get; set; } = "Pending";
     public string? Reason { get; private set; }
-    public Guid? ApprovedByUserId { get; private set; }
+    public Guid? ApprovedByUserId { get; set; }
+    public Guid? ManagerApprovedByUserId { get; set; }
+    public DateTime? ManagerApprovedAtUtc { get; set; }
+    public Guid? FinalApprovedByUserId { get; set; }
+    public DateTime? FinalApprovedAtUtc { get; set; }
+    public Guid? RejectedByUserId { get; set; }
+    public DateTime? RejectedAtUtc { get; set; }
+    public string? RejectionReason { get; set; }
+
     public Employee? Employee { get; private set; }
     public LeaveType? LeaveType { get; private set; }
 
@@ -91,15 +99,35 @@ public class LeaveRequest : AuditableEntity
         };
     }
 
+    public void ManagerApprove(Guid managerUserId)
+    {
+        Status = "ManagerApproved";
+        ManagerApprovedByUserId = managerUserId;
+        ManagerApprovedAtUtc = DateTime.UtcNow;
+    }
+
+    public void FinalApprove(Guid adminUserId)
+    {
+        Status = "Approved";
+        ApprovedByUserId = adminUserId;
+        FinalApprovedByUserId = adminUserId;
+        FinalApprovedAtUtc = DateTime.UtcNow;
+    }
+
     public void Approve(Guid approvedByUserId)
     {
         Status = "Approved";
         ApprovedByUserId = approvedByUserId;
+        FinalApprovedByUserId = approvedByUserId;
+        FinalApprovedAtUtc = DateTime.UtcNow;
     }
 
-    public void Reject()
+    public void Reject(Guid? rejectedByUserId = null, string? reason = null)
     {
         Status = "Rejected";
+        RejectedByUserId = rejectedByUserId;
+        RejectedAtUtc = DateTime.UtcNow;
+        RejectionReason = reason;
     }
 
     public int GetDaysRequested()

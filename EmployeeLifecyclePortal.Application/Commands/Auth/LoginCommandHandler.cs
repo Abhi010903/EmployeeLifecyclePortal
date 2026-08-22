@@ -60,7 +60,14 @@ public sealed class LoginCommandHandler
         {
             Token = token,
             Email = user.Email,
-            Role = user.Role
+            Role = user.Role,
+            User = new UserDto
+            {
+                Id = user.Id,
+                Email = user.Email,
+                Role = user.Role,
+                Name = !string.IsNullOrWhiteSpace(user.Username) ? user.Username : user.Email
+            }
         };
     }
 }

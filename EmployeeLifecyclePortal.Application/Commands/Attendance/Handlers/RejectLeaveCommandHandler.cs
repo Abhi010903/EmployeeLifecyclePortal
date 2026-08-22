@@ -25,7 +25,12 @@ public sealed class RejectLeaveCommandHandler
             .FirstOrDefaultAsync(lr => lr.Id == request.LeaveRequestId, cancellationToken)
             ?? throw new InvalidOperationException($"Leave request with ID {request.LeaveRequestId} not found");
 
-        leaveRequest.Reject();
+        if (request.RejectedByUserId.HasValue && leaveRequest.EmployeeId == request.RejectedByUserId.Value)
+        {
+            throw new InvalidOperationException("Users cannot reject their own leave requests through the approval workflow.");
+        }
+
+        leaveRequest.Reject(request.RejectedByUserId, request.Reason);
         _context.LeaveRequests.Update(leaveRequest);
         await _context.SaveChangesAsync(cancellationToken);
 
@@ -44,6 +49,9 @@ public sealed class RejectLeaveCommandHandler
             Status = leaveRequest.Status,
             Reason = leaveRequest.Reason,
             ApprovedByUserId = leaveRequest.ApprovedByUserId,
+            RejectedByUserId = leaveRequest.RejectedByUserId,
+            RejectedAtUtc = leaveRequest.RejectedAtUtc,
+            RejectionReason = leaveRequest.RejectionReason,
             CreatedAtUtc = leaveRequest.CreatedAtUtc,
             CreatedBy = leaveRequest.CreatedBy,
             LastModifiedAtUtc = leaveRequest.LastModifiedAtUtc,

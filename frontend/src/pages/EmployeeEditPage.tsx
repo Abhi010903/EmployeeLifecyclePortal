@@ -6,7 +6,9 @@ import Button from '@/components/Common/Button'
 import Input from '@/components/Common/Input'
 import { ArrowLeft } from 'lucide-react'
 import { employeesApi } from '@/api/employees'
-import type { Employee } from '@/types'
+import { departmentsApi } from '@/api/departments'
+import { rolesApi } from '@/api/roles'
+import type { Employee, Department, Role } from '@/types'
 import toast from 'react-hot-toast'
 
 export default function EmployeeEditPage() {
@@ -14,6 +16,9 @@ export default function EmployeeEditPage() {
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [departments, setDepartments] = useState<Department[]>([])
+  const [roles, setRoles] = useState<Role[]>([])
+  const [allEmployees, setAllEmployees] = useState<Employee[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formData, setFormData] = useState({
     firstName: '',
@@ -21,24 +26,46 @@ export default function EmployeeEditPage() {
     email: '',
     phoneNumber: '',
     departmentId: '',
+    roleId: '',
+    managerId: '',
+    teamLeadId: '',
   })
 
   useEffect(() => {
     if (id) {
-      loadEmployee()
+      loadData()
     }
   }, [id])
 
-  const loadEmployee = async () => {
+  const loadData = async () => {
     try {
       setIsLoading(true)
-      const employee = await employeesApi.getById(id!)
+      const [employee, depts, allRoles, profile, emps] = await Promise.all([
+        employeesApi.getById(id!),
+        departmentsApi.getAllSimple(),
+        rolesApi.getAllSimple(),
+        employeesApi.getProfile(id!),
+        employeesApi.getAllSimple(),
+      ])
+
+      setDepartments(Array.isArray(depts) ? depts : [])
+      setRoles(Array.isArray(allRoles) ? allRoles : [])
+      setAllEmployees(Array.isArray(emps) ? emps : [])
+
+      const existingRoleId =
+        employee.roleId ||
+        (profile.roles && profile.roles.length > 0 ? (profile.roles[0].id || (profile.roles[0] as any).roleId) : '') ||
+        ''
+
       setFormData({
         firstName: employee.firstName,
         lastName: employee.lastName,
         email: employee.email,
         phoneNumber: employee.phoneNumber || '',
         departmentId: employee.departmentId,
+        roleId: existingRoleId || '',
+        managerId: employee.managerId || '',
+        teamLeadId: employee.teamLeadId || '',
       })
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Failed to load employee')
@@ -75,6 +102,9 @@ export default function EmployeeEditPage() {
         email: formData.email,
         phoneNumber: formData.phoneNumber,
         departmentId: formData.departmentId,
+        roleId: formData.roleId || undefined,
+        managerId: formData.managerId || undefined,
+        teamLeadId: formData.teamLeadId || undefined,
       } as Partial<Employee>)
       toast.success('Employee updated successfully')
       navigate(`/employees/${id}`)
@@ -108,14 +138,14 @@ export default function EmployeeEditPage() {
           </button>
           <div>
             <h1 className="text-3xl font-bold text-neutral-900">Edit Employee</h1>
-            <p className="text-neutral-600 mt-1">Update employee information</p>
+            <p className="text-neutral-600 mt-1">Update employee information and reporting hierarchy</p>
           </div>
         </div>
 
-        {/* Form */}
-        <Card>
+        {/* Form Card */}
+        <Card className="max-w-2xl">
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-2 gap-4">
               <Input
                 label="First Name"
                 value={formData.firstName}
@@ -126,7 +156,6 @@ export default function EmployeeEditPage() {
                 error={errors.firstName}
                 disabled={isSubmitting}
               />
-
               <Input
                 label="Last Name"
                 value={formData.lastName}
@@ -158,26 +187,86 @@ export default function EmployeeEditPage() {
               disabled={isSubmitting}
             />
 
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">Department</label>
-              <select
-                value={formData.departmentId}
-                onChange={(e) => {
-                  setFormData({ ...formData, departmentId: e.target.value })
-                  if (errors.departmentId) setErrors({ ...errors, departmentId: '' })
-                }}
-                disabled={isSubmitting}
-                className={`w-full px-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-neutral-50 ${
-                  errors.departmentId ? 'border-red-500' : 'border-neutral-300'
-                }`}
-              >
-                <option value="">Select Department</option>
-                {/* TODO: Load departments from API */}
-                <option value="550e8400-e29b-41d4-a716-446655440000">Engineering</option>
-                <option value="550e8400-e29b-41d4-a716-446655440001">HR</option>
-                <option value="550e8400-e29b-41d4-a716-446655440002">Finance</option>
-              </select>
-              {errors.departmentId && <p className="text-red-500 text-xs mt-1">{errors.departmentId}</p>}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-2">Department</label>
+                <select
+                  value={formData.departmentId}
+                  onChange={(e) => {
+                    setFormData({ ...formData, departmentId: e.target.value })
+                    if (errors.departmentId) setErrors({ ...errors, departmentId: '' })
+                  }}
+                  disabled={isSubmitting}
+                  className={`w-full px-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-neutral-50 bg-white ${
+                    errors.departmentId ? 'border-red-500' : 'border-neutral-300'
+                  }`}
+                >
+                  <option value="">Select Department</option>
+                  {departments.map((dept) => (
+                    <option key={dept.id} value={dept.id}>
+                      {dept.name}
+                    </option>
+                  ))}
+                </select>
+                {errors.departmentId && <p className="text-red-500 text-xs mt-1">{errors.departmentId}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-2">Role / Designation</label>
+                <select
+                  value={formData.roleId}
+                  onChange={(e) => setFormData({ ...formData, roleId: e.target.value })}
+                  disabled={isSubmitting}
+                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-neutral-50 bg-white"
+                >
+                  <option value="">Select Role (Optional)</option>
+                  {roles.map((role) => (
+                    <option key={role.id} value={role.id}>
+                      {role.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-2">Reporting Manager</label>
+                <select
+                  value={formData.managerId}
+                  onChange={(e) => setFormData({ ...formData, managerId: e.target.value })}
+                  disabled={isSubmitting}
+                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-neutral-50 bg-white"
+                >
+                  <option value="">None / Direct Report</option>
+                  {allEmployees
+                    .filter((emp) => emp.id !== id)
+                    .map((emp) => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.firstName} {emp.lastName} ({emp.employeeCode})
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-2">Team Lead</label>
+                <select
+                  value={formData.teamLeadId}
+                  onChange={(e) => setFormData({ ...formData, teamLeadId: e.target.value })}
+                  disabled={isSubmitting}
+                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-neutral-50 bg-white"
+                >
+                  <option value="">None</option>
+                  {allEmployees
+                    .filter((emp) => emp.id !== id)
+                    .map((emp) => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.firstName} {emp.lastName} ({emp.employeeCode})
+                      </option>
+                    ))}
+                </select>
+              </div>
             </div>
 
             <div className="flex gap-4 pt-4 border-t border-neutral-200">

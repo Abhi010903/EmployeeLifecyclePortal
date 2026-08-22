@@ -2,7 +2,7 @@
 export interface User {
   id: string
   email: string
-  role: 'Admin' | 'Manager' | 'HR' | 'Employee'
+  role: 'Admin' | 'Manager' | 'Team Lead' | 'TeamLead' | 'HR' | 'Employee' | string
   name: string
 }
 
@@ -21,13 +21,21 @@ export interface Employee {
   phoneNumber?: string
   status: 'Active' | 'Inactive' | 'Terminated'
   departmentId: string
+  departmentName?: string
   managerId?: string
+  managerName?: string
+  teamLeadId?: string
+  teamLeadName?: string
+  roleId?: string
+  roleName?: string
+  roles?: Role[] | string[]
   createdAtUtc: string
 }
 
 export interface EmployeeProfile extends Employee {
   departmentName?: string
   managerName?: string
+  teamLeadName?: string
   roles: Role[]
   timelineEventsCount: number
   documentsCount: number
@@ -104,10 +112,20 @@ export interface LeaveRequestDto {
   startDateUtc: string
   endDateUtc: string
   daysRequested: number
-  status: 'Pending' | 'Approved' | 'Rejected'
+  status: 'Pending' | 'ManagerApproved' | 'Approved' | 'Rejected'
   reason?: string
   approvedByUserId?: string
   approvedByName?: string
+  managerApprovedByUserId?: string
+  managerApprovedByName?: string
+  managerApprovedAtUtc?: string
+  finalApprovedByUserId?: string
+  finalApprovedByName?: string
+  finalApprovedAtUtc?: string
+  rejectedByUserId?: string
+  rejectedByName?: string
+  rejectedAtUtc?: string
+  rejectionReason?: string
   createdAtUtc: string
   createdBy?: string
   lastModifiedAtUtc?: string
@@ -128,6 +146,92 @@ export interface LeaveBalanceDto {
   createdBy?: string
   lastModifiedAtUtc?: string
   lastModifiedBy?: string
+}
+
+// Tasks & Work management
+export interface WorkTask {
+  id: string
+  title: string
+  description: string
+  employeeId: string
+  employeeName?: string
+  departmentId?: string
+  departmentName?: string
+  managerId?: string
+  managerName?: string
+  priority: 'Low' | 'Medium' | 'High' | 'Urgent' | string
+  startDateUtc: string
+  deadlineUtc: string
+  status: 'Pending' | 'InProgress' | 'Blocked' | 'Completed' | 'Overdue' | string
+  completionPercentage: number
+  comments?: string
+  completedAtUtc?: string
+  createdAtUtc: string
+}
+
+export interface CreateWorkTaskDto {
+  title: string
+  description: string
+  employeeId: string
+  priority: string
+  startDateUtc: string
+  deadlineUtc: string
+}
+
+export interface UpdateWorkTaskStatusDto {
+  completionPercentage: number
+  status: string
+  comments?: string
+}
+
+// Staffing Requests
+export interface StaffingRequest {
+  id: string
+  departmentId: string
+  departmentName?: string
+  requestedByUserId: string
+  requestedByName?: string
+  currentHeadcount: number
+  requiredCount: number
+  reason: string
+  status: 'Pending' | 'Approved' | 'Rejected' | string
+  adminComments?: string
+  createdAtUtc: string
+  resolvedAtUtc?: string
+}
+
+export interface CreateStaffingRequestDto {
+  departmentId: string
+  requiredCount: number
+  reason: string
+}
+
+export interface ResolveStaffingRequestDto {
+  approve: boolean
+  comments?: string
+}
+
+// Dashboard Summary
+export interface DashboardSummary {
+  totalEmployees: number
+  activeEmployees: number
+  inactiveEmployees: number
+  totalDepartments: number
+  totalRoles: number
+  employeesOnLeave: number
+  pendingLeaveRequests: number
+  todayAttendance: number
+  activeWorkSessions: number
+  pendingStaffingRequests: number
+  pendingTasks: number
+  inProgressTasks: number
+  overdueTasks: number
+  completedTasks: number
+  totalPayrollDue: number
+  employeeTrend: number
+  attendanceTrend: number
+  leaveTrend: number
+  payrollTrend: number
 }
 
 // Leave types (old, kept for backward compatibility)
@@ -175,11 +279,14 @@ export interface PayslipDto {
   employeeName?: string
   month: number
   year: number
-  grossSalary: number
+  baseSalary: number
+  grossSalary?: number
+  allowances: number
   deductions: number
   netSalary: number
-  status: string
+  status: 'Generated' | 'Paid' | 'Cancelled' | 'Processed' | string
   generatedDateUtc: string
+  paidDateUtc?: string
   createdAtUtc: string
   createdBy?: string
   lastModifiedAtUtc?: string
@@ -189,14 +296,19 @@ export interface PayslipDto {
 // Asset types
 export interface AssetDto {
   id: string
-  assetCode: string
-  assetName: string
-  assetType: 'Laptop' | 'Desktop' | 'Monitor' | 'Phone' | 'ID Card' | 'Accessories'
-  serialNumber: string
-  purchaseValue: number
-  status: 'Available' | 'Assigned' | 'Retired'
-  condition: string
+  assetTag: string
+  name: string
+  category: string
+  serialNumber?: string
+  status: 'Available' | 'Assigned' | 'UnderMaintenance' | 'Retired' | string
+  purchasePrice: number
   purchaseDateUtc: string
+  currentAssigneeId?: string
+  currentAssigneeName?: string
+  assetName?: string
+  assetCode?: string
+  assetType?: string
+  purchaseValue?: number
   createdAtUtc: string
   createdBy?: string
   lastModifiedAtUtc?: string
@@ -205,14 +317,15 @@ export interface AssetDto {
 
 export interface AssetAssignmentDto {
   id: string
-  employeeId: string
-  employeeName?: string
   assetId: string
   assetName?: string
+  assetTag?: string
   assetType?: string
+  employeeId: string
+  employeeName?: string
   assignedDateUtc: string
-  returnedDateUtc?: string
-  status: 'Active' | 'Returned'
+  returnDateUtc?: string
+  status: 'Active' | 'Returned' | string
   notes?: string
   createdAtUtc: string
   createdBy?: string
@@ -224,24 +337,25 @@ export interface AssetMaintenanceDto {
   id: string
   assetId: string
   assetName?: string
-  maintenanceDateUtc: string
+  maintenanceType: string
   description: string
   cost: number
-  serviceProvider: string
+  maintenanceDateUtc: string
+  nextMaintenanceDateUtc?: string
+  performedBy: string
+  serviceProvider?: string
   createdAtUtc: string
   createdBy?: string
   lastModifiedAtUtc?: string
   lastModifiedBy?: string
 }
 
-// Reports types
+// Report types
 export interface ReportDto {
   id: string
-  name: string
-  type: string
-  description: string
-  status: string
-  generatedDateUtc: string
+  title: string
+  type: 'Attendance' | 'Leave' | 'Payroll' | 'Employees' | 'Performance' | 'Custom'
+  parametersJson?: string
   dataJson?: string
   generatedByUserId: string
   generatedByName?: string
@@ -357,6 +471,7 @@ export interface CandidateDto {
   id: string
   firstName: string
   lastName: string
+  fullName?: string
   email: string
   phoneNumber?: string
   status: 'Applied' | 'Interview' | 'Rejected' | 'Hired'

@@ -9,5 +9,8 @@ public sealed record UpdateEmployeeCommand(
     string LastName,
     string Email,
     string? PhoneNumber,
-    Guid DepartmentId)
+    Guid DepartmentId,
+    Guid? RoleId = null,
+    Guid? ManagerId = null,
+    Guid? TeamLeadId = null)
     : IRequest<EmployeeDto>;

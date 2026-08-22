@@ -74,7 +74,7 @@ public sealed class AttendanceController : ControllerBase
     }
 
     [HttpPost("leave/approve")]
-    [Authorize(Policy = Permissions.Manager)]
+    [Authorize(Policy = Permissions.Supervisor)]
     public async Task<IActionResult> ApproveLeave(
         ApproveLeaveCommand command,
         CancellationToken cancellationToken)
@@ -83,7 +83,7 @@ public sealed class AttendanceController : ControllerBase
     }
 
     [HttpPost("leave/reject")]
-    [Authorize(Policy = Permissions.Manager)]
+    [Authorize(Policy = Permissions.Supervisor)]
     public async Task<IActionResult> RejectLeave(
         RejectLeaveCommand command,
         CancellationToken cancellationToken)

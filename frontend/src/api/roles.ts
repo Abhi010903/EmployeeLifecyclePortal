@@ -4,12 +4,25 @@ import type { Role, PaginatedResponse } from '@/types'
 export const rolesApi = {
   getAll: async (pageNumber = 1, pageSize = 10): Promise<PaginatedResponse<Role>> => {
     const response = await apiClient.get(`/roles?pageNumber=${pageNumber}&pageSize=${pageSize}`)
-    return response.data
+    const data = response.data
+    if (Array.isArray(data)) {
+      return {
+        items: data,
+        totalCount: data.length,
+        pageNumber,
+        pageSize,
+        totalPages: Math.ceil(data.length / pageSize) || 1,
+      }
+    }
+    return data
   },
 
   getAllSimple: async (): Promise<Role[]> => {
     const response = await apiClient.get('/roles')
-    return response.data
+    const data = response.data
+    if (Array.isArray(data)) return data
+    if (data && Array.isArray(data.items)) return data.items
+    return []
   },
 
   getById: async (id: string): Promise<Role> => {

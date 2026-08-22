@@ -7,6 +7,7 @@ import Input from '@/components/Common/Input'
 import { ArrowLeft, Edit2, Trash2 } from 'lucide-react'
 import { departmentsApi } from '@/api/departments'
 import type { Department } from '@/types'
+import { formatDateIST } from '@/utils/format'
 import toast from 'react-hot-toast'
 
 export default function DepartmentDetailsPage() {
@@ -84,11 +85,7 @@ export default function DepartmentDetailsPage() {
   }
 
   const formatDate = (date: string) => {
-    return new Intl.DateTimeFormat('en-IN', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    }).format(new Date(date))
+    return formatDateIST(date)
   }
 
   if (isLoading) {

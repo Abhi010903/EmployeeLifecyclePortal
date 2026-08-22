@@ -29,7 +29,7 @@ public sealed class ReturnAssetCommandHandler : IRequestHandler<ReturnAssetComma
         var asset = assignment.Asset;
         if (asset != null)
         {
-            asset.Retire();
+            asset.Status = "Available";
         }
 
         assignment.Return();

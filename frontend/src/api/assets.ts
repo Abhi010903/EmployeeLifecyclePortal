@@ -20,6 +20,9 @@ export const assetsApi = {
     apiClient.post<AssetDto>('/assets', data),
 
   // Assignments
+  getAllAssignments: () =>
+    apiClient.get<AssetAssignmentDto[]>('/assets/assignments'),
+
   getEmployeeAssets: (employeeId: string) =>
     apiClient.get<AssetAssignmentDto[]>(
       `/assets/employee/${employeeId}`

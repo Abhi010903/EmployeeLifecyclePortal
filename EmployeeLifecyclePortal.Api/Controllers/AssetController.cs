@@ -1,22 +1,56 @@
 using EmployeeLifecyclePortal.Application.Authorization;
 using EmployeeLifecyclePortal.Application.Commands.Asset;
+using EmployeeLifecyclePortal.Application.DTOs.Asset;
+using EmployeeLifecyclePortal.Application.Interfaces;
 using EmployeeLifecyclePortal.Application.Queries.Asset;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace EmployeeLifecyclePortal.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Route("api/assets")]
 [Authorize(Policy = Permissions.Employee)]
 public sealed class AssetController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IApplicationDbContext _context;
 
-    public AssetController(IMediator mediator)
+    public AssetController(IMediator mediator, IApplicationDbContext context)
     {
         _mediator = mediator;
+        _context = context;
+    }
+
+    [HttpGet("assignments")]
+    public async Task<IActionResult> GetAllAssignments(
+        CancellationToken cancellationToken)
+    {
+        var assignments = await _context.AssetAssignments
+            .Include(aa => aa.Employee)
+            .Include(aa => aa.Asset)
+            .OrderByDescending(aa => aa.AssignedDateUtc)
+            .Select(aa => new AssetAssignmentDto
+            {
+                Id = aa.Id,
+                EmployeeId = aa.EmployeeId,
+                EmployeeName = aa.Employee != null ? $"{aa.Employee.FirstName} {aa.Employee.LastName}" : "Unknown",
+                AssetId = aa.AssetId,
+                AssetName = aa.Asset != null ? aa.Asset.AssetName : "Unknown",
+                AssetType = aa.Asset != null ? aa.Asset.AssetType : "Unknown",
+                AssignedDateUtc = aa.AssignedDateUtc,
+                ReturnedDateUtc = aa.ReturnedDateUtc,
+                Status = aa.Status,
+                Notes = aa.Notes,
+                CreatedAtUtc = aa.CreatedAtUtc,
+                CreatedBy = aa.CreatedBy
+            })
+            .ToListAsync(cancellationToken);
+
+        return Ok(assignments);
     }
 
     [HttpPost]

@@ -6,6 +6,7 @@ import Button from '@/components/Common/Button'
 import { ArrowLeft, Edit2, Trash2 } from 'lucide-react'
 import { rolesApi } from '@/api/roles'
 import type { Role } from '@/types'
+import { formatDateIST } from '@/utils/format'
 import toast from 'react-hot-toast'
 
 const PERMISSIONS = [
@@ -56,11 +57,7 @@ export default function RoleDetailsPage() {
   }
 
   const formatDate = (date: string) => {
-    return new Intl.DateTimeFormat('en-IN', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    }).format(new Date(date))
+    return formatDateIST(date)
   }
 
   if (isLoading) {
