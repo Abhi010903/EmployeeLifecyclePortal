@@ -9,7 +9,7 @@ namespace EmployeeLifecyclePortal.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Policy = Permissions.Employee)]
+[Authorize(Policy = Permissions.Manager)]
 public sealed class ReportsController : ControllerBase
 {
     private readonly IMediator _mediator;

@@ -97,10 +97,7 @@ export default function Header({ onToggleSidebar }: HeaderProps) {
           </button>
           <div className="flex items-center gap-2">
             <span className="text-xl font-bold bg-gradient-to-r from-primary-600 to-indigo-600 bg-clip-text text-transparent tracking-tight select-none">
-              HRMS
-            </span>
-            <span className="text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full bg-primary-50 text-primary-700 border border-primary-100 hidden sm:inline-block">
-              Enterprise
+              Employee Lifecycle Portal
             </span>
           </div>
         </div>

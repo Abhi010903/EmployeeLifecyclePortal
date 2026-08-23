@@ -1,6 +1,8 @@
 // Authentication types
 export interface User {
   id: string
+  employeeId?: string
+  employeeCode?: string
   email: string
   role: 'Admin' | 'Manager' | 'Team Lead' | 'TeamLead' | 'HR' | 'Employee' | string
   name: string
@@ -581,4 +583,61 @@ export interface JobOfferDto {
   createdBy?: string
   lastModifiedAtUtc?: string
   lastModifiedBy?: string
+}
+
+export interface EmployeePayrollSummaryDto {
+  employeeId: string
+  employeeName: string
+  employeeCode: string
+  departmentName: string
+  month: number
+  year: number
+  grossSalary: number
+  totalDeductions: number
+  netSalary: number
+  totalReimbursements: number
+  basicSalary: number
+  hra: number
+  specialAllowance: number
+  conveyanceAllowance: number
+  overtimePay: number
+  bonusPay: number
+  pfDeduction: number
+  esiDeduction: number
+  tdsDeduction: number
+  otherDeductions: number
+  latestPayslip?: PayslipDto
+  recentPayslips: PayslipDto[]
+  reimbursements: ReimbursementDto[]
+}
+
+export interface HolidaySummaryDto {
+  name: string
+  date: string
+  description: string
+}
+
+export interface EmployeeDashboardDto {
+  employeeId: string
+  employeeName: string
+  employeeCode: string
+  departmentName: string
+  roleName: string
+  managerName?: string
+  todayAttendance?: AttendanceDto
+  isCheckedIn: boolean
+  hoursWorkedToday: number
+  pendingTasksCount: number
+  completedTasksCount: number
+  assignedTasks: WorkTask[]
+  totalLeaveDays: number
+  usedLeaveDays: number
+  remainingLeaveDays: number
+  leaveBalances: LeaveBalanceDto[]
+  latestPayslip?: PayslipDto
+  pendingReimbursementAmount: number
+  recentReimbursements: ReimbursementDto[]
+  assignedAssetsCount: number
+  assignedAssets: AssetAssignmentDto[]
+  upcomingHolidays: HolidaySummaryDto[]
 }

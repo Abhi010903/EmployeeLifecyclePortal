@@ -52,7 +52,7 @@ export default function App() {
           <Route
             path="/employees"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRole={['Admin', 'HR', 'Manager', 'Team Lead', 'TeamLead']}>
                 <EmployeesPage />
               </ProtectedRoute>
             }
@@ -61,7 +61,7 @@ export default function App() {
           <Route
             path="/employees/:id"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRole={['Admin', 'HR', 'Manager', 'Team Lead', 'TeamLead']}>
                 <EmployeeDetailsPage />
               </ProtectedRoute>
             }
@@ -70,7 +70,7 @@ export default function App() {
           <Route
             path="/employees/:id/edit"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRole={['Admin', 'HR', 'Manager', 'Team Lead', 'TeamLead']}>
                 <EmployeeEditPage />
               </ProtectedRoute>
             }
@@ -79,7 +79,7 @@ export default function App() {
           <Route
             path="/departments"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRole={['Admin', 'HR', 'Manager', 'Team Lead', 'TeamLead']}>
                 <DepartmentsPage />
               </ProtectedRoute>
             }
@@ -88,7 +88,7 @@ export default function App() {
           <Route
             path="/departments/:id"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRole={['Admin', 'HR', 'Manager', 'Team Lead', 'TeamLead']}>
                 <DepartmentDetailsPage />
               </ProtectedRoute>
             }
@@ -97,7 +97,7 @@ export default function App() {
           <Route
             path="/roles"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRole={['Admin']}>
                 <RolesPage />
               </ProtectedRoute>
             }
@@ -106,7 +106,7 @@ export default function App() {
           <Route
             path="/roles/:id"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRole={['Admin']}>
                 <RoleDetailsPage />
               </ProtectedRoute>
             }
@@ -160,7 +160,7 @@ export default function App() {
           <Route
             path="/recruitment"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRole={['Admin', 'HR', 'Manager', 'Team Lead', 'TeamLead']}>
                 <RecruitmentPage />
               </ProtectedRoute>
             }
@@ -169,7 +169,7 @@ export default function App() {
           <Route
             path="/reports"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRole={['Admin', 'HR', 'Manager']}>
                 <ReportsPage />
               </ProtectedRoute>
             }
@@ -178,7 +178,7 @@ export default function App() {
           <Route
             path="/settings"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRole={['Admin']}>
                 <SettingsPage />
               </ProtectedRoute>
             }

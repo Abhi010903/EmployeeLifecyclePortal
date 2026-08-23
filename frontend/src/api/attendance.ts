@@ -8,11 +8,11 @@ import {
 
 // Attendance API
 export const attendanceApi = {
-  checkIn: (data: { employeeId: string; notes?: string }) =>
+  checkIn: (data: { employeeId?: string; notes?: string }) =>
     apiClient.post('/attendance/check-in', data),
 
-  checkOut: (params: { attendanceId?: string; employeeId?: string } | string) => {
-    const payload = typeof params === 'string' ? { attendanceId: params } : params
+  checkOut: (params?: { attendanceId?: string; employeeId?: string } | string) => {
+    const payload = typeof params === 'string' ? { attendanceId: params } : (params || {})
     return apiClient.post('/attendance/check-out', payload)
   },
 
@@ -22,6 +22,12 @@ export const attendanceApi = {
   getToday: () =>
     apiClient.get<AttendanceDto[]>('/attendance/today'),
 
+  getMyToday: () =>
+    apiClient.get<AttendanceDto[]>('/attendance/my/today'),
+
+  getMyAttendance: () =>
+    apiClient.get<AttendanceDto[]>('/attendance/my'),
+
   getByEmployee: (employeeId: string) =>
     apiClient.get<AttendanceDto[]>(`/attendance/employee/${employeeId}`),
 }
@@ -29,7 +35,7 @@ export const attendanceApi = {
 // Leave API
 export const leaveApi = {
   apply: (data: {
-    employeeId: string
+    employeeId?: string
     leaveTypeId: string
     startDate: string
     endDate: string
@@ -52,12 +58,23 @@ export const leaveApi = {
   getBalance: (employeeId: string) =>
     apiClient.get<LeaveBalanceDto[]>(`/attendance/leave/balance/${employeeId}`),
 
+  getMyBalance: () =>
+    apiClient.get<LeaveBalanceDto[]>('/attendance/leave/balance/my'),
+
   getRequests: (employeeId?: string, status?: string) => {
     const params = new URLSearchParams()
     if (employeeId) params.append('employeeId', employeeId)
     if (status) params.append('status', status)
     return apiClient.get<LeaveRequestDto[]>(
       `/attendance/leave/requests${params.toString() ? '?' + params.toString() : ''}`
+    )
+  },
+
+  getMyRequests: (status?: string) => {
+    const params = new URLSearchParams()
+    if (status) params.append('status', status)
+    return apiClient.get<LeaveRequestDto[]>(
+      `/attendance/leave/requests/my${params.toString() ? '?' + params.toString() : ''}`
     )
   },
 }

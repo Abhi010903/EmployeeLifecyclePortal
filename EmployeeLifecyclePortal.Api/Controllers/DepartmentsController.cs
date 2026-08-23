@@ -84,6 +84,7 @@ public sealed class DepartmentsController : ControllerBase
     }
 
     [HttpGet("{id:guid}/employees")]
+    [Authorize(Policy = Permissions.Manager)]
     public async Task<IActionResult> GetDepartmentEmployees(
         Guid id,
         CancellationToken cancellationToken)
@@ -96,6 +97,7 @@ public sealed class DepartmentsController : ControllerBase
     }
 
     [HttpGet("staffing-requests")]
+    [Authorize(Policy = Permissions.Manager)]
     public async Task<IActionResult> GetStaffingRequests(
         [FromQuery] Guid? departmentId,
         CancellationToken cancellationToken)

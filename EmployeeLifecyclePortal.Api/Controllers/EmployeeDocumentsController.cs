@@ -15,17 +15,20 @@ public sealed class EmployeeDocumentsController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly IApplicationDbContext _context;
+    private readonly ICurrentUserService _currentUserService;
     private readonly IWebHostEnvironment _environment;
     private readonly ILogger<EmployeeDocumentsController> _logger;
 
     public EmployeeDocumentsController(
         IMediator mediator,
         IApplicationDbContext context,
+        ICurrentUserService currentUserService,
         IWebHostEnvironment environment,
         ILogger<EmployeeDocumentsController> logger)
     {
         _mediator = mediator;
         _context = context;
+        _currentUserService = currentUserService;
         _environment = environment;
         _logger = logger;
     }
@@ -88,11 +91,17 @@ public sealed class EmployeeDocumentsController : ControllerBase
     /// </summary>
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> GetDocuments(
         Guid employeeId,
         [FromQuery] bool includeArchived = false,
         CancellationToken cancellationToken = default)
     {
+        if (!await _currentUserService.HasAccessToEmployeeAsync(employeeId, _context, cancellationToken))
+        {
+            return Forbid();
+        }
+
         _logger.LogInformation(
             "Fetching documents — Employee: {EmployeeId} | IncludeArchived: {IncludeArchived}",
             employeeId,
@@ -135,12 +144,17 @@ public sealed class EmployeeDocumentsController : ControllerBase
     /// </summary>
     [HttpGet("{documentId:guid}/download")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DownloadDocument(
         Guid employeeId,
         Guid documentId,
         CancellationToken cancellationToken = default)
     {
+        if (!await _currentUserService.HasAccessToEmployeeAsync(employeeId, _context, cancellationToken))
+        {
+            return Forbid();
+        }
         _logger.LogInformation(
             "Downloading document — Employee: {EmployeeId} | Document: {DocumentId}",
             employeeId,

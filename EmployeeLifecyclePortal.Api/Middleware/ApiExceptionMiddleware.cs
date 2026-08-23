@@ -98,6 +98,12 @@ public sealed class ApiExceptionMiddleware
         exception switch
         {
             ValidationException => (int)HttpStatusCode.BadRequest,
+            ArgumentException => (int)HttpStatusCode.BadRequest,
+            InvalidOperationException => (int)HttpStatusCode.BadRequest,
+            NotFoundException => (int)HttpStatusCode.NotFound,
+            KeyNotFoundException => (int)HttpStatusCode.NotFound,
+            ForbiddenException => (int)HttpStatusCode.Forbidden,
+            UnauthorizedAccessException => (int)HttpStatusCode.Forbidden,
             UserAlreadyExistsException => (int)HttpStatusCode.Conflict,
             InvalidCredentialsException => (int)HttpStatusCode.Unauthorized,
             _ => (int)HttpStatusCode.InternalServerError
@@ -105,10 +111,25 @@ public sealed class ApiExceptionMiddleware
 
     private static ExceptionResponse BuildResponse(int statusCode, Exception exception)
     {
+        var message = exception.Message;
+
+        // Sanitize messages containing internal GUIDs or domain IDs
+        if (System.Text.RegularExpressions.Regex.IsMatch(message, @"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"))
+        {
+            if (statusCode == (int)HttpStatusCode.NotFound)
+            {
+                message = "The requested employee or resource could not be found. Please contact HR.";
+            }
+            else if (statusCode == (int)HttpStatusCode.Forbidden)
+            {
+                message = "You don't have permission to access this information.";
+            }
+        }
+
         var response = new ExceptionResponse
         {
             StatusCode = statusCode,
-            Message = exception.Message
+            Message = message
         };
 
         // Attach field-level validation errors when available

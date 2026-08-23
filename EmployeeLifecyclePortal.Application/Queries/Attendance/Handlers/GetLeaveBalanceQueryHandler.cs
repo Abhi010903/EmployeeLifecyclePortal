@@ -21,37 +21,45 @@ public sealed class GetLeaveBalanceQueryHandler
         CancellationToken cancellationToken)
     {
         var balances = await _context.LeaveBalances
-            .Include(lb => lb.Employee)
-            .Include(lb => lb.LeaveType)
             .Where(lb => lb.EmployeeId == request.EmployeeId)
             .ToListAsync(cancellationToken);
 
+        var leaveTypes = await _context.LeaveTypes
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        var employee = await _context.Employees
+            .AsNoTracking()
+            .FirstOrDefaultAsync(e => e.Id == request.EmployeeId, cancellationToken);
+
+        var empName = employee != null ? $"{employee.FirstName} {employee.LastName}".Trim() : "Employee";
+        var currentYear = DateTime.UtcNow.Year;
+
         if (balances.Count > 0)
         {
-            return balances.Select(balance => new LeaveBalanceDto
+            return balances.Select(balance =>
             {
-                Id = balance.Id,
-                EmployeeId = balance.EmployeeId,
-                EmployeeName = balance.Employee != null 
-                    ? $"{balance.Employee.FirstName} {balance.Employee.LastName}".Trim()
-                    : "Unknown",
-                LeaveTypeId = balance.LeaveTypeId,
-                LeaveTypeName = balance.LeaveType != null ? balance.LeaveType.Name : "Unknown",
-                TotalDays = balance.TotalDays,
-                UsedDays = balance.UsedDays,
-                RemainingDays = balance.RemainingDays,
-                Year = balance.Year,
-                CreatedAtUtc = balance.CreatedAtUtc,
-                CreatedBy = balance.CreatedBy,
-                LastModifiedAtUtc = balance.LastModifiedAtUtc,
-                LastModifiedBy = balance.LastModifiedBy
+                var lt = leaveTypes.FirstOrDefault(t => t.Id == balance.LeaveTypeId);
+                return new LeaveBalanceDto
+                {
+                    Id = balance.Id,
+                    EmployeeId = balance.EmployeeId,
+                    EmployeeName = empName,
+                    LeaveTypeId = balance.LeaveTypeId,
+                    LeaveTypeName = lt?.Name ?? "Leave",
+                    TotalDays = balance.TotalDays,
+                    UsedDays = balance.UsedDays,
+                    RemainingDays = balance.RemainingDays,
+                    Year = balance.Year,
+                    CreatedAtUtc = balance.CreatedAtUtc,
+                    CreatedBy = balance.CreatedBy,
+                    LastModifiedAtUtc = balance.LastModifiedAtUtc,
+                    LastModifiedBy = balance.LastModifiedBy
+                };
             }).ToList();
         }
 
-        // If no explicit balance records, calculate dynamically from master LeaveTypes and approved LeaveRequests
-        var employee = await _context.Employees.FirstOrDefaultAsync(e => e.Id == request.EmployeeId, cancellationToken);
-        var leaveTypes = await _context.LeaveTypes.ToListAsync(cancellationToken);
-        var currentYear = DateTime.UtcNow.Year;
+        // If no explicit balance records exist in table, calculate dynamically from master LeaveTypes and approved LeaveRequests
         var approvedLeaves = await _context.LeaveRequests
             .Where(lr => lr.EmployeeId == request.EmployeeId && lr.Status == "Approved" && lr.StartDateUtc.Year == currentYear)
             .ToListAsync(cancellationToken);
@@ -63,7 +71,7 @@ public sealed class GetLeaveBalanceQueryHandler
             {
                 Id = Guid.NewGuid(),
                 EmployeeId = request.EmployeeId,
-                EmployeeName = employee != null ? $"{employee.FirstName} {employee.LastName}".Trim() : "Unknown",
+                EmployeeName = empName,
                 LeaveTypeId = lt.Id,
                 LeaveTypeName = lt.Name,
                 TotalDays = lt.DaysPerYear,

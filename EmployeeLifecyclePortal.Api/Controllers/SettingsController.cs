@@ -16,11 +16,16 @@ public sealed class SettingsController : ControllerBase
 {
     private readonly IApplicationDbContext _context;
     private readonly IMediator _mediator;
+    private readonly ICurrentUserService _currentUserService;
 
-    public SettingsController(IApplicationDbContext context, IMediator mediator)
+    public SettingsController(
+        IApplicationDbContext context,
+        IMediator mediator,
+        ICurrentUserService currentUserService)
     {
         _context = context;
         _mediator = mediator;
+        _currentUserService = currentUserService;
     }
 
     // Company Profile
@@ -72,9 +77,25 @@ public sealed class SettingsController : ControllerBase
     }
 
     // User Settings
+    [HttpGet("user/my")]
+    public async Task<IActionResult> GetMyUserSettings(CancellationToken cancellationToken)
+    {
+        var userId = _currentUserService.UserId;
+        if (userId == Guid.Empty)
+            return Unauthorized();
+
+        return await GetUserSettings(userId, cancellationToken);
+    }
+
     [HttpGet("user/{userId:guid}")]
     public async Task<IActionResult> GetUserSettings(Guid userId, CancellationToken cancellationToken)
     {
+        var isElevated = _currentUserService.Role == "Admin" || _currentUserService.Role == "HR";
+        if (!isElevated && _currentUserService.UserId != userId)
+        {
+            return Forbid();
+        }
+
         var settings = await _context.UserSettings.FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken);
         if (settings == null)
         {
@@ -100,6 +121,12 @@ public sealed class SettingsController : ControllerBase
     [HttpPut("user/{userId:guid}")]
     public async Task<IActionResult> UpdateUserSettings(Guid userId, [FromBody] UserSettingsDto dto, CancellationToken cancellationToken)
     {
+        var isElevated = _currentUserService.Role == "Admin" || _currentUserService.Role == "HR";
+        if (!isElevated && _currentUserService.UserId != userId)
+        {
+            return Forbid();
+        }
+
         var settings = await _context.UserSettings.FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken);
         if (settings == null)
         {

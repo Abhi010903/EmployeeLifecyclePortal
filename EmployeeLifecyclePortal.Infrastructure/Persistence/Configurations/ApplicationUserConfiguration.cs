@@ -27,6 +27,9 @@ public sealed class ApplicationUserConfiguration
             .HasMaxLength(50)
             .IsRequired();
 
+        builder.Property(x => x.EmployeeId)
+            .IsRequired(false);
+
         builder.HasIndex(x => x.Email)
             .IsUnique();
     }

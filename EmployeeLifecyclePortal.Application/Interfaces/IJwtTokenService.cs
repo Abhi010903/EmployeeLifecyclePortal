@@ -5,5 +5,7 @@ public interface IJwtTokenService
     string GenerateToken(
         Guid userId,
         string email,
-        string role);
+        string role,
+        Guid? employeeId = null,
+        string username = "");
 }

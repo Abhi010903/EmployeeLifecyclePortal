@@ -20,12 +20,9 @@ public sealed class GetLeaveRequestsQueryHandler
         GetLeaveRequestsQuery request,
         CancellationToken cancellationToken)
     {
-        var query = _context.LeaveRequests
-            .Include(lr => lr.Employee)
-            .Include(lr => lr.LeaveType)
-            .AsNoTracking();
+        var query = _context.LeaveRequests.AsNoTracking();
 
-        if (request.EmployeeId.HasValue)
+        if (request.EmployeeId.HasValue && request.EmployeeId.Value != Guid.Empty)
         {
             query = query.Where(lr => lr.EmployeeId == request.EmployeeId.Value);
         }
@@ -35,35 +32,49 @@ public sealed class GetLeaveRequestsQueryHandler
             query = query.Where(lr => lr.Status == request.Status);
         }
 
-        return await query
-            .Select(leaveRequest => new LeaveRequestDto
-            {
-                Id = leaveRequest.Id,
-                EmployeeId = leaveRequest.EmployeeId,
-                EmployeeName = leaveRequest.Employee != null 
-                    ? $"{leaveRequest.Employee.FirstName} {leaveRequest.Employee.LastName}"
-                    : "Unknown",
-                LeaveTypeId = leaveRequest.LeaveTypeId,
-                LeaveTypeName = leaveRequest.LeaveType != null ? leaveRequest.LeaveType.Name : "Unknown",
-                StartDateUtc = leaveRequest.StartDateUtc,
-                EndDateUtc = leaveRequest.EndDateUtc,
-                DaysRequested = leaveRequest.GetDaysRequested(),
-                Status = leaveRequest.Status,
-                Reason = leaveRequest.Reason,
-                ApprovedByUserId = leaveRequest.ApprovedByUserId,
-                ManagerApprovedByUserId = leaveRequest.ManagerApprovedByUserId,
-                ManagerApprovedAtUtc = leaveRequest.ManagerApprovedAtUtc,
-                FinalApprovedByUserId = leaveRequest.FinalApprovedByUserId,
-                FinalApprovedAtUtc = leaveRequest.FinalApprovedAtUtc,
-                RejectedByUserId = leaveRequest.RejectedByUserId,
-                RejectedAtUtc = leaveRequest.RejectedAtUtc,
-                RejectionReason = leaveRequest.RejectionReason,
-                CreatedAtUtc = leaveRequest.CreatedAtUtc,
-                CreatedBy = leaveRequest.CreatedBy,
-                LastModifiedAtUtc = leaveRequest.LastModifiedAtUtc,
-                LastModifiedBy = leaveRequest.LastModifiedBy
-            })
-            .OrderByDescending(lr => lr.CreatedAtUtc)
-            .ToListAsync(cancellationToken);
+        var list = await query.OrderByDescending(lr => lr.CreatedAtUtc).ToListAsync(cancellationToken);
+        if (list.Count == 0)
+        {
+            return new List<LeaveRequestDto>();
+        }
+
+        var empIds = list.Select(l => l.EmployeeId).Distinct().ToList();
+        var leaveTypeIds = list.Select(l => l.LeaveTypeId).Distinct().ToList();
+
+        var employees = await _context.Employees
+            .AsNoTracking()
+            .Where(e => empIds.Contains(e.Id))
+            .ToDictionaryAsync(e => e.Id, e => $"{e.FirstName} {e.LastName}".Trim(), cancellationToken);
+
+        var leaveTypes = await _context.LeaveTypes
+            .AsNoTracking()
+            .Where(lt => leaveTypeIds.Contains(lt.Id))
+            .ToDictionaryAsync(lt => lt.Id, lt => lt.Name, cancellationToken);
+
+        return list.Select(leaveRequest => new LeaveRequestDto
+        {
+            Id = leaveRequest.Id,
+            EmployeeId = leaveRequest.EmployeeId,
+            EmployeeName = employees.TryGetValue(leaveRequest.EmployeeId, out var name) ? name : "Employee",
+            LeaveTypeId = leaveRequest.LeaveTypeId,
+            LeaveTypeName = leaveTypes.TryGetValue(leaveRequest.LeaveTypeId, out var ltName) ? ltName : "Leave",
+            StartDateUtc = leaveRequest.StartDateUtc,
+            EndDateUtc = leaveRequest.EndDateUtc,
+            DaysRequested = leaveRequest.GetDaysRequested(),
+            Status = leaveRequest.Status,
+            Reason = leaveRequest.Reason,
+            ApprovedByUserId = leaveRequest.ApprovedByUserId,
+            ManagerApprovedByUserId = leaveRequest.ManagerApprovedByUserId,
+            ManagerApprovedAtUtc = leaveRequest.ManagerApprovedAtUtc,
+            FinalApprovedByUserId = leaveRequest.FinalApprovedByUserId,
+            FinalApprovedAtUtc = leaveRequest.FinalApprovedAtUtc,
+            RejectedByUserId = leaveRequest.RejectedByUserId,
+            RejectedAtUtc = leaveRequest.RejectedAtUtc,
+            RejectionReason = leaveRequest.RejectionReason,
+            CreatedAtUtc = leaveRequest.CreatedAtUtc,
+            CreatedBy = leaveRequest.CreatedBy,
+            LastModifiedAtUtc = leaveRequest.LastModifiedAtUtc,
+            LastModifiedBy = leaveRequest.LastModifiedBy
+        }).ToList();
     }
 }

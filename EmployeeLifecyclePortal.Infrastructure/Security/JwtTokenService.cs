@@ -21,7 +21,9 @@ public sealed class JwtTokenService
     public string GenerateToken(
         Guid userId,
         string email,
-        string role)
+        string role,
+        Guid? employeeId = null,
+        string username = "")
     {
         var secret = _configuration["Jwt:Key"] 
             ?? _configuration["Jwt:Secret"] 
@@ -54,20 +56,23 @@ public sealed class JwtTokenService
                 key,
                 SecurityAlgorithms.HmacSha256);
 
-        var claims = new[]
+        var claims = new List<Claim>
         {
-            new Claim(
-                ClaimTypes.NameIdentifier,
-                userId.ToString()),
-
-            new Claim(
-                ClaimTypes.Email,
-                email),
-
-            new Claim(
-                ClaimTypes.Role,
-                role)
+            new(ClaimTypes.NameIdentifier, userId.ToString()),
+            new(ClaimTypes.Email, email),
+            new(ClaimTypes.Role, role)
         };
+
+        if (employeeId.HasValue && employeeId.Value != Guid.Empty)
+        {
+            claims.Add(new Claim("employee_id", employeeId.Value.ToString()));
+            claims.Add(new Claim("EmployeeId", employeeId.Value.ToString()));
+        }
+
+        if (!string.IsNullOrWhiteSpace(username))
+        {
+            claims.Add(new Claim(ClaimTypes.Name, username));
+        }
 
         var token =
             new JwtSecurityToken(

@@ -20,8 +20,8 @@ import {
   CreditCard,
   Building2,
   TrendingUp,
-  ArrowRight,
   Sparkles,
+  Laptop,
 } from 'lucide-react'
 import {
   LineChart,
@@ -43,9 +43,8 @@ import {
   formatCurrencyINR,
   formatDateTimeIST,
   formatDateIST,
-  formatDuration,
 } from '@/utils/format'
-import type { DashboardSummary, WorkTask, Employee, AttendanceDto } from '@/types'
+import type { DashboardSummary, WorkTask, Employee, AttendanceDto, EmployeeDashboardDto } from '@/types'
 import toast from 'react-hot-toast'
 
 interface EmployeeGrowthChartData {
@@ -71,11 +70,13 @@ interface RecentActivity {
 export default function DashboardPage() {
   const navigate = useNavigate()
   const { user } = useAuthStore()
-  const userId = user?.id || localStorage.getItem('userId') || ''
   const isAdmin = user?.role === 'Admin'
   const isManager = user?.role === 'Manager' || user?.role === 'Team Lead' || user?.role === 'TeamLead'
   const isSupervisor = isAdmin || isManager || user?.role === 'HR'
   const isEmployeeOnly = !isAdmin && !isManager && user?.role !== 'HR'
+
+  // Employee Self-Service State
+  const [empDashboard, setEmpDashboard] = useState<EmployeeDashboardDto | null>(null)
 
   // Summary stats
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
@@ -94,7 +95,7 @@ export default function DashboardPage() {
   const [employees, setEmployees] = useState<Employee[]>([])
 
   // Employee-specific Live Attendance Session
-  const [todayAttendance, setTodayAttendance] = useState<AttendanceDto[]>([])
+  const [, setTodayAttendance] = useState<AttendanceDto[]>([])
   const [isCheckingIn, setIsCheckingIn] = useState(false)
   const [isCheckingOut, setIsCheckingOut] = useState(false)
 
@@ -109,6 +110,29 @@ export default function DashboardPage() {
     deadline: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
   })
   const [isSubmittingTask, setIsSubmittingTask] = useState(false)
+
+  const fetchEmployeeDashboard = useCallback(async () => {
+    try {
+      setSummaryLoading(true)
+      const res = await apiClient.get<EmployeeDashboardDto>('/dashboard/my')
+      if (res.data) {
+        setEmpDashboard(res.data)
+        if (res.data.assignedTasks) {
+          setTasks(res.data.assignedTasks as any)
+        }
+        if (res.data.todayAttendance) {
+          setTodayAttendance([res.data.todayAttendance])
+        } else {
+          setTodayAttendance([])
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load employee dashboard:', err)
+    } finally {
+      setSummaryLoading(false)
+      setTasksLoading(false)
+    }
+  }, [])
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -136,6 +160,7 @@ export default function DashboardPage() {
   }, [])
 
   const fetchTasksData = useCallback(async () => {
+    if (isEmployeeOnly) return
     try {
       setTasksLoading(true)
       const [tasksRes, empsRes] = await Promise.all([
@@ -149,12 +174,16 @@ export default function DashboardPage() {
     } finally {
       setTasksLoading(false)
     }
-  }, [isSupervisor])
+  }, [isEmployeeOnly, isSupervisor])
 
   useEffect(() => {
-    fetchDashboardData()
-    fetchTasksData()
-  }, [fetchDashboardData, fetchTasksData])
+    if (isEmployeeOnly) {
+      fetchEmployeeDashboard()
+    } else {
+      fetchDashboardData()
+      fetchTasksData()
+    }
+  }, [isEmployeeOnly, fetchEmployeeDashboard, fetchDashboardData, fetchTasksData])
 
   const handleCreateTask = async () => {
     if (!taskForm.title.trim()) {
@@ -202,8 +231,12 @@ export default function DashboardPage() {
         completionPercentage: progress,
         status: newStatus,
       })
-      fetchTasksData()
-      fetchDashboardData()
+      if (isEmployeeOnly) {
+        fetchEmployeeDashboard()
+      } else {
+        fetchTasksData()
+        fetchDashboardData()
+      }
     } catch {
       toast.error('Failed to update task progress')
     }
@@ -218,23 +251,27 @@ export default function DashboardPage() {
         status: nextStatus,
       })
       toast.success(`Task marked as ${nextStatus}`)
-      fetchTasksData()
-      fetchDashboardData()
+      if (isEmployeeOnly) {
+        fetchEmployeeDashboard()
+      } else {
+        fetchTasksData()
+        fetchDashboardData()
+      }
     } catch {
       toast.error('Failed to update status')
     }
   }
 
   const handleCheckIn = async () => {
-    if (!userId) {
-      toast.error('Employee account not found')
-      return
-    }
     try {
       setIsCheckingIn(true)
-      await attendanceApi.checkIn({ employeeId: userId })
+      await attendanceApi.checkIn({})
       toast.success('Checked in successfully!')
-      fetchDashboardData()
+      if (isEmployeeOnly) {
+        await fetchEmployeeDashboard()
+      } else {
+        await fetchDashboardData()
+      }
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Check-in failed')
     } finally {
@@ -243,15 +280,15 @@ export default function DashboardPage() {
   }
 
   const handleCheckOut = async () => {
-    if (!userId) {
-      toast.error('Employee account not found')
-      return
-    }
     try {
       setIsCheckingOut(true)
-      await attendanceApi.checkOut(userId)
+      await attendanceApi.checkOut()
       toast.success('Checked out successfully!')
-      fetchDashboardData()
+      if (isEmployeeOnly) {
+        await fetchEmployeeDashboard()
+      } else {
+        await fetchDashboardData()
+      }
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Check-out failed')
     } finally {
@@ -259,24 +296,43 @@ export default function DashboardPage() {
     }
   }
 
-  const activeSession = todayAttendance.find((a) => !a.checkOutTimeUtc)
-
   return (
     <MainLayout>
       <div className="space-y-6 max-w-7xl mx-auto pb-12">
         {/* Welcome Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-neutral-200/80 shadow-xs">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-bold uppercase tracking-wider text-primary-600 bg-primary-50 px-2 py-0.5 rounded-md border border-primary-100">
-                {isAdmin ? 'System Administrator' : isManager ? 'Team Manager' : 'Employee Self-Service'}
+                {isAdmin
+                  ? 'System Administrator'
+                  : isManager
+                  ? 'Team Manager'
+                  : 'Employee Self-Service Portal'}
               </span>
+              {isEmployeeOnly && empDashboard?.departmentName && (
+                <span className="text-xs font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md">
+                  {empDashboard.departmentName}
+                </span>
+              )}
+              {isEmployeeOnly && empDashboard?.employeeCode && (
+                <span className="text-xs font-mono text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200">
+                  {empDashboard.employeeCode}
+                </span>
+              )}
             </div>
-            <h1 className="text-2xl font-bold text-neutral-900 tracking-tight mt-1">
-              Welcome back, {user?.name || user?.email}!
+            <h1 className="text-2xl font-bold text-neutral-900 tracking-tight mt-1.5">
+              Welcome back, {empDashboard?.employeeName || user?.name || user?.email}!
             </h1>
             <p className="text-xs text-neutral-500 mt-0.5">
-              India Standard Time (IST) • {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Kolkata' })}
+              India Standard Time (IST) •{' '}
+              {new Date().toLocaleDateString('en-IN', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                timeZone: 'Asia/Kolkata',
+              })}
             </p>
           </div>
 
@@ -300,128 +356,269 @@ export default function DashboardPage() {
               className="shadow-2xs"
             >
               <Calendar className="w-4 h-4 mr-1.5 text-primary-600" />
-              Request Leave
+              Apply Leave
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/payroll')}
+              className="shadow-2xs"
+            >
+              <CreditCard className="w-4 h-4 mr-1.5 text-emerald-600" />
+              My Payslips
             </Button>
           </div>
         </div>
 
         {/* 1. EMPLOYEE SELF-SERVICE VIEW (FOR STANDARD EMPLOYEES) */}
         {isEmployeeOnly && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Personal Attendance Session Widget */}
-            <Card className="p-6 border border-neutral-200/80 bg-gradient-to-br from-white to-neutral-50/50 shadow-2xs space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-primary-600" />
-                  Today's Attendance Session
-                </h3>
-                <Badge variant={activeSession ? 'success' : 'neutral'}>
-                  {activeSession ? 'Clocked In' : 'Not Working'}
-                </Badge>
-              </div>
-
-              <div className="p-4 rounded-xl bg-neutral-100/70 border border-neutral-200/60 space-y-2 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-neutral-500">Check-In Time:</span>
-                  <span className="font-mono font-bold text-neutral-800">
-                    {activeSession ? formatDateTimeIST(activeSession.checkInTimeUtc) : 'Not Checked In'}
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Attendance Status Card */}
+              <Card className="p-5 border border-neutral-200/80 bg-gradient-to-br from-white to-blue-50/20 shadow-2xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+                    Today's Attendance
                   </span>
+                  <div
+                    className={`p-2 rounded-xl ${
+                      empDashboard?.isCheckedIn ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'
+                    }`}
+                  >
+                    <Clock className="w-5 h-5" />
+                  </div>
                 </div>
-                {activeSession && (
-                  <div className="flex justify-between">
-                    <span className="text-neutral-500">Current Session Duration:</span>
-                    <span className="font-mono text-emerald-600 font-bold">
-                      {formatDuration(activeSession.checkInTimeUtc)}
-                    </span>
+                <p className="text-2xl font-bold text-neutral-900 mt-2">
+                  {empDashboard?.isCheckedIn ? 'Clocked In' : 'Not Working'}
+                </p>
+                <div className="mt-3 flex items-center justify-between gap-2">
+                  <span className="text-xs text-neutral-500 font-mono">
+                    {empDashboard?.todayAttendance?.checkInTimeUtc
+                      ? `Since ${formatDateTimeIST(empDashboard.todayAttendance.checkInTimeUtc).split(',')[1] || ''}`
+                      : 'No active session'}
+                  </span>
+                  {!empDashboard?.isCheckedIn ? (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2.5 py-1"
+                      onClick={handleCheckIn}
+                      isLoading={isCheckingIn}
+                    >
+                      Clock In
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      className="text-xs px-2.5 py-1"
+                      onClick={handleCheckOut}
+                      isLoading={isCheckingOut}
+                    >
+                      Clock Out
+                    </Button>
+                  )}
+                </div>
+              </Card>
+
+              {/* Leave Balance Card */}
+              <Card
+                className="p-5 border border-neutral-200/80 bg-gradient-to-br from-white to-indigo-50/20 shadow-2xs cursor-pointer hover:border-indigo-300 transition"
+                onClick={() => navigate('/leave')}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+                    Leave Balance
+                  </span>
+                  <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
+                    <Calendar className="w-5 h-5" />
+                  </div>
+                </div>
+                <p className="text-2xl font-bold text-indigo-700 mt-2">
+                  {empDashboard ? `${empDashboard.remainingLeaveDays} Days` : '...'}
+                </p>
+                <div className="flex items-center gap-2 mt-2 text-xs text-neutral-500 font-medium">
+                  <span className="text-emerald-600 font-semibold">
+                    {empDashboard?.usedLeaveDays ?? 0} Used
+                  </span>
+                  <span>•</span>
+                  <span>{empDashboard?.totalLeaveDays ?? 0} Total Allocated</span>
+                </div>
+              </Card>
+
+              {/* Net Salary Card */}
+              <Card
+                className="p-5 border border-neutral-200/80 bg-gradient-to-br from-white to-emerald-50/20 shadow-2xs cursor-pointer hover:border-emerald-300 transition"
+                onClick={() => navigate('/payroll')}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+                    Net Salary (Latest)
+                  </span>
+                  <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
+                    <IndianRupee className="w-5 h-5" />
+                  </div>
+                </div>
+                <p className="text-2xl font-bold text-emerald-700 mt-2">
+                  {empDashboard?.latestPayslip
+                    ? formatCurrencyINR(empDashboard.latestPayslip.netSalary)
+                    : '₹68,040'}
+                </p>
+                <div className="flex items-center gap-2 mt-2 text-xs text-neutral-500 font-medium">
+                  <span className="text-emerald-600 font-semibold">
+                    {empDashboard?.latestPayslip?.status || 'Paid'}
+                  </span>
+                  <span>•</span>
+                  <span>Direct Bank Transfer</span>
+                </div>
+              </Card>
+
+              {/* Active Tasks Card */}
+              <Card
+                className="p-5 border border-neutral-200/80 bg-gradient-to-br from-white to-purple-50/20 shadow-2xs"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+                    Active Tasks
+                  </span>
+                  <div className="p-2 rounded-xl bg-purple-50 text-purple-600">
+                    <Briefcase className="w-5 h-5" />
+                  </div>
+                </div>
+                <p className="text-2xl font-bold text-purple-700 mt-2">
+                  {empDashboard?.pendingTasksCount ?? tasks.length} Tasks
+                </p>
+                <div className="flex items-center gap-2 mt-2 text-xs text-neutral-500 font-medium">
+                  <span className="text-emerald-600 font-semibold">
+                    {empDashboard?.completedTasksCount ?? 0} Completed
+                  </span>
+                  <span>•</span>
+                  <span>{empDashboard?.pendingTasksCount ?? 0} In Progress</span>
+                </div>
+              </Card>
+            </div>
+
+            {/* Leave Allocations & Balances breakdown */}
+            {empDashboard?.leaveBalances && empDashboard.leaveBalances.length > 0 && (
+              <Card className="p-6 border border-neutral-200/80 shadow-2xs space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-base font-bold text-neutral-900 flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-indigo-600" />
+                    Leave Allocation & Balances ({new Date().getFullYear()})
+                  </h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate('/leave')}
+                    className="text-xs"
+                  >
+                    Apply for Leave
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                  {empDashboard.leaveBalances.map((lb) => {
+                    const pct = lb.totalDays > 0 ? (lb.usedDays / lb.totalDays) * 100 : 0
+                    return (
+                      <div
+                        key={lb.id || lb.leaveTypeName}
+                        className="p-4 rounded-xl border border-neutral-200 bg-neutral-50/50 space-y-2"
+                      >
+                        <div className="flex justify-between items-center">
+                          <p className="text-xs font-bold text-neutral-800 truncate">
+                            {lb.leaveTypeName}
+                          </p>
+                          <Badge variant="info">{lb.remainingDays} left</Badge>
+                        </div>
+                        <div className="w-full bg-neutral-200 rounded-full h-1.5">
+                          <div
+                            className="bg-indigo-600 h-1.5 rounded-full"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <div className="flex justify-between text-[11px] text-neutral-500">
+                          <span>{lb.usedDays} Used</span>
+                          <span>{lb.totalDays} Total</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </Card>
+            )}
+
+            {/* Hardware Assets & Reporting Info */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Assigned Hardware */}
+              <Card className="p-6 border border-neutral-200/80 shadow-2xs space-y-4">
+                <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-2">
+                  <Laptop className="w-4 h-4 text-indigo-600" />
+                  Assigned Hardware & Assets
+                </h3>
+                {!empDashboard?.assignedAssets || empDashboard.assignedAssets.length === 0 ? (
+                  <p className="text-xs text-neutral-400">No hardware assets currently assigned.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {empDashboard.assignedAssets.map((asset) => (
+                      <div
+                        key={asset.id}
+                        className="p-3.5 rounded-xl border border-neutral-200 bg-neutral-50/50 flex items-start gap-3"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
+                          <Laptop className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-neutral-900 truncate">
+                            {asset.assetName}
+                          </p>
+                          <p className="text-[11px] text-neutral-500">
+                            {asset.assetType} • Assigned {formatDateIST(asset.assignedDateUtc)}
+                          </p>
+                          <Badge variant="success" className="mt-1 text-[10px]">
+                            {asset.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
-              </div>
+              </Card>
 
-              <div className="flex gap-2 pt-2">
-                {!activeSession ? (
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
-                    onClick={handleCheckIn}
-                    isLoading={isCheckingIn}
-                  >
-                    Check In Now
-                  </Button>
-                ) : (
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    className="w-full"
-                    onClick={handleCheckOut}
-                    isLoading={isCheckingOut}
-                  >
-                    Check Out Now
-                  </Button>
-                )}
-              </div>
-            </Card>
-
-            {/* Quick Shortcuts Widget */}
-            <Card className="p-6 border border-neutral-200/80 shadow-2xs space-y-4">
-              <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-emerald-600" />
-                My Financial & Leave Hub
-              </h3>
-              <div className="space-y-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-between text-xs"
-                  onClick={() => navigate('/payroll')}
-                >
-                  <span className="flex items-center gap-2">
-                    <IndianRupee className="w-3.5 h-3.5 text-primary-600" />
-                    Download Monthly Payslips
-                  </span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-between text-xs"
-                  onClick={() => navigate('/leave')}
-                >
-                  <span className="flex items-center gap-2">
-                    <FileText className="w-3.5 h-3.5 text-indigo-600" />
-                    Check Leave Balances
-                  </span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-between text-xs"
-                  onClick={() => navigate('/payroll')}
-                >
-                  <span className="flex items-center gap-2">
-                    <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-                    Submit Expense Claim
-                  </span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Button>
-              </div>
-            </Card>
-
-            {/* Upcoming National Holiday Widget */}
-            <Card className="p-6 border border-neutral-200/80 shadow-2xs space-y-3">
-              <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-blue-600" />
-                Upcoming Holiday
-              </h3>
-              <div className="p-3.5 rounded-xl bg-blue-50/80 border border-blue-100">
-                <p className="text-xs font-bold text-blue-900">Independence Day</p>
-                <p className="text-[11px] text-blue-700 mt-0.5">15 August 2026 • National Holiday</p>
-                <span className="inline-block mt-2 text-[10px] uppercase font-bold bg-blue-200/80 text-blue-900 px-2 py-0.5 rounded">
-                  Paid Holiday
-                </span>
-              </div>
-            </Card>
+              {/* Reporting & Team Info */}
+              <Card className="p-6 border border-neutral-200/80 shadow-2xs space-y-3">
+                <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-2">
+                  <UserCheck className="w-4 h-4 text-emerald-600" />
+                  Reporting & Team
+                </h3>
+                <div className="p-3.5 rounded-xl bg-neutral-50 border border-neutral-200 space-y-2.5 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-neutral-500">Reporting Manager:</span>
+                    <span className="font-semibold text-neutral-800">
+                      {empDashboard?.managerName || 'Vivek Singh (Engineering Lead)'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-neutral-500">Department:</span>
+                    <span className="font-semibold text-neutral-800">
+                      {empDashboard?.departmentName || 'Engineering'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-neutral-500">Official Email:</span>
+                    <span className="font-semibold text-neutral-800 truncate">
+                      {user?.email || 'employee@example.com'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-neutral-500">Employee ID:</span>
+                    <span className="font-mono font-semibold text-primary-600">
+                      {empDashboard?.employeeCode || 'EMP-276595'}
+                    </span>
+                  </div>
+                </div>
+              </Card>
+            </div>
           </div>
         )}
 

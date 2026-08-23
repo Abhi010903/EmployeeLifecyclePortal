@@ -1,5 +1,6 @@
 using EmployeeLifecyclePortal.Application.Commands.Employees;
 using EmployeeLifecyclePortal.Application.DTOs;
+using EmployeeLifecyclePortal.Application.Interfaces;
 using EmployeeLifecyclePortal.Application.Queries.Employees;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -13,26 +14,54 @@ namespace EmployeeLifecyclePortal.Api.Controllers;
 public sealed class EmployeeProfileController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly ICurrentUserService _currentUserService;
+    private readonly IApplicationDbContext _context;
     private readonly ILogger<EmployeeProfileController> _logger;
 
     public EmployeeProfileController(
         IMediator mediator,
+        ICurrentUserService currentUserService,
+        IApplicationDbContext context,
         ILogger<EmployeeProfileController> logger)
     {
         _mediator = mediator;
+        _currentUserService = currentUserService;
+        _context = context;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Get current authenticated employee profile.
+    /// </summary>
+    [HttpGet("me")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetMyProfile(
+        CancellationToken cancellationToken = default)
+    {
+        var empId = await _currentUserService.GetRequiredEmployeeIdAsync(_context, cancellationToken);
+        var query = new GetEmployeeProfileQuery(EmployeeId: empId);
+        var result = await _mediator.Send(query, cancellationToken);
+
+        return Ok(result);
     }
 
     /// <summary>
     /// Get complete employee profile including roles, manager, and activity counts.
     /// </summary>
-    [HttpGet("{id}")]
+    [HttpGet("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetProfile(
         Guid id,
         CancellationToken cancellationToken = default)
     {
+        if (!await _currentUserService.HasAccessToEmployeeAsync(id, _context, cancellationToken))
+        {
+            return Forbid();
+        }
+
         _logger.LogInformation("Fetching employee profile — Employee: {EmployeeId}", id);
 
         var query = new GetEmployeeProfileQuery(EmployeeId: id);
@@ -44,13 +73,19 @@ public sealed class EmployeeProfileController : ControllerBase
     /// <summary>
     /// Get employee's timeline events (promotions, transfers, training, etc.)
     /// </summary>
-    [HttpGet("{id}/timeline")]
+    [HttpGet("{id:guid}/timeline")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetTimeline(
         Guid id,
         CancellationToken cancellationToken = default)
     {
+        if (!await _currentUserService.HasAccessToEmployeeAsync(id, _context, cancellationToken))
+        {
+            return Forbid();
+        }
+
         _logger.LogInformation("Fetching employee timeline — Employee: {EmployeeId}", id);
 
         var query = new GetEmployeeTimelineQuery(EmployeeId: id);

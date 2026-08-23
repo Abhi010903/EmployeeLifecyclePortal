@@ -75,6 +75,7 @@ public sealed class RecruitmentController : ControllerBase
 
     // Candidates
     [HttpGet("candidates")]
+    [Authorize(Policy = Permissions.Manager)]
     public async Task<IActionResult> GetCandidates(
         [FromQuery] Guid? jobPostingId,
         CancellationToken cancellationToken)
@@ -87,6 +88,7 @@ public sealed class RecruitmentController : ControllerBase
     }
 
     [HttpGet("candidates/{id:guid}")]
+    [Authorize(Policy = Permissions.Manager)]
     public async Task<IActionResult> GetCandidateById(
         Guid id,
         CancellationToken cancellationToken)
@@ -102,6 +104,7 @@ public sealed class RecruitmentController : ControllerBase
     }
 
     [HttpPost("candidates")]
+    [Authorize(Policy = Permissions.Manager)]
     public async Task<IActionResult> CreateCandidate(
         [FromBody] CreateCandidateRequest request,
         CancellationToken cancellationToken)
@@ -129,6 +132,7 @@ public sealed class RecruitmentController : ControllerBase
 
     // Interviews
     [HttpGet("interviews")]
+    [Authorize(Policy = Permissions.Manager)]
     public async Task<IActionResult> GetInterviews(
         [FromQuery] Guid? candidateId,
         CancellationToken cancellationToken)
@@ -169,6 +173,7 @@ public sealed class RecruitmentController : ControllerBase
 
     // Offers
     [HttpGet("offers")]
+    [Authorize(Policy = Permissions.Manager)]
     public async Task<IActionResult> GetJobOffers(
         [FromQuery] Guid? candidateId,
         CancellationToken cancellationToken)

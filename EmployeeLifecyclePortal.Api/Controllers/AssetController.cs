@@ -18,20 +18,50 @@ public sealed class AssetController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly IApplicationDbContext _context;
+    private readonly ICurrentUserService _currentUserService;
 
-    public AssetController(IMediator mediator, IApplicationDbContext context)
+    public AssetController(
+        IMediator mediator,
+        IApplicationDbContext context,
+        ICurrentUserService currentUserService)
     {
         _mediator = mediator;
         _context = context;
+        _currentUserService = currentUserService;
+    }
+
+    [HttpGet("my")]
+    public async Task<IActionResult> GetMyAssets(
+        CancellationToken cancellationToken)
+    {
+        var empId = await _currentUserService.GetRequiredEmployeeIdAsync(_context, cancellationToken);
+        return Ok(await _mediator.Send(
+            new GetEmployeeAssetsQuery(empId),
+            cancellationToken));
     }
 
     [HttpGet("assignments")]
     public async Task<IActionResult> GetAllAssignments(
         CancellationToken cancellationToken)
     {
-        var assignments = await _context.AssetAssignments
+        var isElevated = _currentUserService.Role == "Admin" ||
+                         _currentUserService.Role == "HR" ||
+                         _currentUserService.Role == "Manager" ||
+                         _currentUserService.Role == "Team Lead" ||
+                         _currentUserService.Role == "TeamLead";
+
+        var query = _context.AssetAssignments
             .Include(aa => aa.Employee)
             .Include(aa => aa.Asset)
+            .AsQueryable();
+
+        if (!isElevated)
+        {
+            var empId = await _currentUserService.GetRequiredEmployeeIdAsync(_context, cancellationToken);
+            query = query.Where(aa => aa.EmployeeId == empId);
+        }
+
+        var assignments = await query
             .OrderByDescending(aa => aa.AssignedDateUtc)
             .Select(aa => new AssetAssignmentDto
             {
@@ -85,6 +115,11 @@ public sealed class AssetController : ControllerBase
         Guid employeeId,
         CancellationToken cancellationToken)
     {
+        if (!await _currentUserService.HasAccessToEmployeeAsync(employeeId, _context, cancellationToken))
+        {
+            return Forbid();
+        }
+
         return Ok(await _mediator.Send(
             new GetEmployeeAssetsQuery(employeeId),
             cancellationToken));

@@ -85,7 +85,7 @@ export default function LoginPage() {
         </h1>
 
         <p className="text-center text-neutral-500 mb-6">
-          Sign in to your HRMS account
+          Sign in to your Employee Lifecycle Portal account
         </p>
 
         {/* OAuth / SSO Providers */}

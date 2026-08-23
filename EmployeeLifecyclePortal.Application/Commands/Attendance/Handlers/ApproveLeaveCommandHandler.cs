@@ -1,4 +1,5 @@
 using EmployeeLifecyclePortal.Application.DTOs.Attendance;
+using EmployeeLifecyclePortal.Application.Exceptions;
 using EmployeeLifecyclePortal.Application.Interfaces;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -20,10 +21,8 @@ public sealed class ApproveLeaveCommandHandler
         CancellationToken cancellationToken)
     {
         var leaveRequest = await _context.LeaveRequests
-            .Include(lr => lr.Employee)
-            .Include(lr => lr.LeaveType)
             .FirstOrDefaultAsync(lr => lr.Id == request.LeaveRequestId, cancellationToken)
-            ?? throw new InvalidOperationException($"Leave request with ID {request.LeaveRequestId} not found");
+            ?? throw new NotFoundException("Leave request not found.");
 
         if (leaveRequest.EmployeeId == request.ApprovedByUserId)
         {
@@ -63,15 +62,21 @@ public sealed class ApproveLeaveCommandHandler
         _context.LeaveRequests.Update(leaveRequest);
         await _context.SaveChangesAsync(cancellationToken);
 
+        var employee = await _context.Employees
+            .AsNoTracking()
+            .FirstOrDefaultAsync(e => e.Id == leaveRequest.EmployeeId, cancellationToken);
+
+        var leaveType = await _context.LeaveTypes
+            .AsNoTracking()
+            .FirstOrDefaultAsync(lt => lt.Id == leaveRequest.LeaveTypeId, cancellationToken);
+
         return new LeaveRequestDto
         {
             Id = leaveRequest.Id,
             EmployeeId = leaveRequest.EmployeeId,
-            EmployeeName = leaveRequest.Employee != null 
-                ? $"{leaveRequest.Employee.FirstName} {leaveRequest.Employee.LastName}"
-                : "Unknown",
+            EmployeeName = employee != null ? $"{employee.FirstName} {employee.LastName}".Trim() : "Employee",
             LeaveTypeId = leaveRequest.LeaveTypeId,
-            LeaveTypeName = leaveRequest.LeaveType != null ? leaveRequest.LeaveType.Name : "Unknown",
+            LeaveTypeName = leaveType?.Name ?? "Leave",
             StartDateUtc = leaveRequest.StartDateUtc,
             EndDateUtc = leaveRequest.EndDateUtc,
             DaysRequested = leaveRequest.GetDaysRequested(),

@@ -3,6 +3,7 @@ import {
   SalaryStructureDto,
   PayslipDto,
   PayrollSummaryDto,
+  EmployeePayrollSummaryDto,
   ReimbursementDto,
   CreateReimbursementDto,
 } from '@/types'
@@ -17,6 +18,14 @@ export const payrollApi = {
     return apiClient.get<PayrollSummaryDto>(`/payroll/summary${query}`)
   },
 
+  getMySummary: (month?: number, year?: number) => {
+    const params = new URLSearchParams()
+    if (month) params.append('month', month.toString())
+    if (year) params.append('year', year.toString())
+    const query = params.toString() ? `?${params.toString()}` : ''
+    return apiClient.get<EmployeePayrollSummaryDto>(`/payroll/my${query}`)
+  },
+
   processPayrollRun: (month: number, year: number) =>
     apiClient.post<PayrollSummaryDto>('/payroll/run', { month, year }),
 
@@ -27,6 +36,9 @@ export const payrollApi = {
   getSalaryStructure: (employeeId: string) =>
     apiClient.get<SalaryStructureDto>(`/payroll/salary-structure/${employeeId}`),
 
+  getMySalaryStructure: () =>
+    apiClient.get<SalaryStructureDto>('/payroll/salary-structure/my'),
+
   updateSalaryStructure: (employeeId: string, data: { baseSalary: number }) =>
     apiClient.put(`/payroll/salary-structure/${employeeId}`, data),
 
@@ -35,6 +47,9 @@ export const payrollApi = {
     const url = employeeId ? `/payroll/payslips?employeeId=${employeeId}` : '/payroll/payslips'
     return apiClient.get<PayslipDto[]>(url)
   },
+
+  getMyPayslips: () =>
+    apiClient.get<PayslipDto[]>('/payroll/payslips/my'),
 
   getPayslipsByMonth: (month: number, year: number) =>
     apiClient.get<PayslipDto[]>(`/payroll/payslips/${year}/${month}`),
@@ -55,7 +70,14 @@ export const payrollApi = {
     return apiClient.get<ReimbursementDto[]>(`/payroll/reimbursements${query}`)
   },
 
-  createReimbursement: (data: CreateReimbursementDto) =>
+  getMyReimbursements: (status?: string) => {
+    const params = new URLSearchParams()
+    if (status && status !== 'All') params.append('status', status)
+    const query = params.toString() ? `?${params.toString()}` : ''
+    return apiClient.get<ReimbursementDto[]>(`/payroll/reimbursements/my${query}`)
+  },
+
+  createReimbursement: (data: Partial<CreateReimbursementDto> & { amount: number; category: string; description: string }) =>
     apiClient.post<ReimbursementDto>('/payroll/reimbursements', data),
 
   approveReimbursement: (id: string) =>

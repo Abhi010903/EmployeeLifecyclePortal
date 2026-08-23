@@ -32,34 +32,63 @@ export default function LeavePage() {
   const { user } = useAuthStore()
   const userId = user?.id || localStorage.getItem('userId') || ''
   const isAdmin = user?.role === 'Admin'
-  const isSupervisor = user?.role === 'Admin' || user?.role === 'Manager' || user?.role === 'Team Lead' || user?.role === 'TeamLead' || user?.role === 'HR'
+  const isSupervisor =
+    user?.role === 'Admin' ||
+    user?.role === 'Manager' ||
+    user?.role === 'Team Lead' ||
+    user?.role === 'TeamLead' ||
+    user?.role === 'HR'
+  const isEmployeeOnly = !isSupervisor
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true)
-      const [typesRes, balancesRes, requestsRes, empsRes] = await Promise.all([
-        leaveApi.getTypes(),
-        userId ? leaveApi.getBalance(userId) : Promise.resolve({ data: [] }),
-        isSupervisor
-          ? leaveApi.getRequests()
-          : (userId ? leaveApi.getRequests(userId) : Promise.resolve({ data: [] })),
-        isSupervisor ? employeesApi.getAllSimple() : Promise.resolve([]),
-      ])
+      if (isEmployeeOnly) {
+        const [typesRes, balancesRes, requestsRes] = await Promise.allSettled([
+          leaveApi.getTypes(),
+          leaveApi.getMyBalance(),
+          leaveApi.getMyRequests(),
+        ])
 
-      setLeaveTypes(Array.isArray(typesRes.data) ? typesRes.data : [])
-      setBalances(Array.isArray(balancesRes.data) ? balancesRes.data : [])
-      setRequests(Array.isArray(requestsRes.data) ? requestsRes.data : [])
-      if (Array.isArray(empsRes)) {
-        setEmployees(empsRes)
+        if (typesRes.status === 'fulfilled' && Array.isArray(typesRes.value.data)) {
+          setLeaveTypes(typesRes.value.data)
+        }
+        if (balancesRes.status === 'fulfilled' && Array.isArray(balancesRes.value.data)) {
+          setBalances(balancesRes.value.data)
+        }
+        if (requestsRes.status === 'fulfilled' && Array.isArray(requestsRes.value.data)) {
+          setRequests(requestsRes.value.data)
+        }
+      } else {
+        const [typesRes, balancesRes, requestsRes, empsRes] = await Promise.allSettled([
+          leaveApi.getTypes(),
+          leaveApi.getMyBalance(),
+          leaveApi.getRequests(),
+          employeesApi.getAllSimple(),
+        ])
+
+        if (typesRes.status === 'fulfilled' && Array.isArray(typesRes.value.data)) {
+          setLeaveTypes(typesRes.value.data)
+        }
+        if (balancesRes.status === 'fulfilled' && Array.isArray(balancesRes.value.data)) {
+          setBalances(balancesRes.value.data)
+        }
+        if (requestsRes.status === 'fulfilled' && Array.isArray(requestsRes.value.data)) {
+          setRequests(requestsRes.value.data)
+        }
+        if (empsRes.status === 'fulfilled' && Array.isArray(empsRes.value)) {
+          setEmployees(empsRes.value)
+        }
       }
       setError(null)
-    } catch (err) {
-      setError('Failed to load leave data')
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Failed to load leave data'
+      setError(typeof msg === 'string' ? msg : 'Failed to load leave data')
       console.error(err)
     } finally {
       setLoading(false)
     }
-  }, [userId, isSupervisor])
+  }, [isEmployeeOnly])
 
   useEffect(() => {
     fetchData()
@@ -91,7 +120,7 @@ export default function LeavePage() {
   const handleOpenModal = () => {
     setFormErrors({})
     setFormData({
-      employeeId: isSupervisor ? (employees.length > 0 ? employees[0].id : '') : userId,
+      employeeId: isSupervisor ? (employees.length > 0 ? employees[0].id : '') : '',
       leaveTypeId: leaveTypes.length > 0 ? leaveTypes[0].id : '',
       startDate: new Date().toISOString().split('T')[0],
       endDate: new Date().toISOString().split('T')[0],
@@ -105,15 +134,22 @@ export default function LeavePage() {
 
     try {
       setIsSubmitting(true)
-      const targetEmpId = isSupervisor ? formData.employeeId : userId
-
-      await leaveApi.apply({
-        employeeId: targetEmpId,
-        leaveTypeId: formData.leaveTypeId,
-        startDate: formData.startDate,
-        endDate: formData.endDate,
-        reason: formData.reason,
-      })
+      if (isSupervisor && formData.employeeId) {
+        await leaveApi.apply({
+          employeeId: formData.employeeId,
+          leaveTypeId: formData.leaveTypeId,
+          startDate: formData.startDate,
+          endDate: formData.endDate,
+          reason: formData.reason,
+        })
+      } else {
+        await leaveApi.apply({
+          leaveTypeId: formData.leaveTypeId,
+          startDate: formData.startDate,
+          endDate: formData.endDate,
+          reason: formData.reason,
+        })
+      }
 
       toast.success('Leave request submitted successfully')
       setIsModalOpen(false)
@@ -175,8 +211,14 @@ export default function LeavePage() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-neutral-900">Leave Management</h1>
-            <p className="text-neutral-600 mt-1">Track and manage leave requests with multi-stage approval workflow</p>
+            <h1 className="text-3xl font-bold text-neutral-900">
+              {isEmployeeOnly ? 'My Leave & Time Off' : 'Leave Management'}
+            </h1>
+            <p className="text-neutral-600 mt-1">
+              {isEmployeeOnly
+                ? 'Track your leave balances, request time off, and monitor approval status (IST / Asia/Kolkata)'
+                : 'Track and manage employee leave requests with multi-stage approval workflow (IST / Asia/Kolkata)'}
+            </p>
           </div>
           <Button onClick={handleOpenModal}>
             <Plus className="w-4 h-4 mr-2" />

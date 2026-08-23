@@ -142,6 +142,216 @@ public static class DatabaseSeeder
                 }
             }
 
+            // Ensure Employee Rahul Sharma exists
+            var engDept = await context.Departments.FirstOrDefaultAsync(d => d.Name == "Engineering")
+                ?? await context.Departments.FirstOrDefaultAsync();
+
+            var rahulEmployee = await context.Employees.FirstOrDefaultAsync(e => e.EmployeeCode == "EMP-276595" || e.Email.Contains("rahul"));
+            if (rahulEmployee == null && engDept != null)
+            {
+                rahulEmployee = new Employee(
+                    employeeCode: "EMP-276595",
+                    firstName: "Rahul",
+                    lastName: "Sharma",
+                    email: "rahul.sharma.test@example.com",
+                    phoneNumber: "+91 98765 43210",
+                    departmentId: engDept.Id
+                );
+                context.Employees.Add(rahulEmployee);
+                await context.SaveChangesAsync();
+
+                context.SalaryStructures.Add(new SalaryStructure(rahulEmployee.Id, 72000m, new DateTime(2026, 1, 1)));
+            }
+
+            // Seed / Update Employee User account (Rahul Sharma)
+            var empUser = await context.ApplicationUsers.FirstOrDefaultAsync(u => u.Email == "employee@example.com");
+            if (empUser == null)
+            {
+                var passwordHash = passwordHasher.Hash("Employee@123456");
+                empUser = new ApplicationUser(
+                    username: "Rahul Sharma",
+                    email: "employee@example.com",
+                    passwordHash: passwordHash,
+                    role: "Employee",
+                    employeeId: rahulEmployee?.Id);
+
+                context.ApplicationUsers.Add(empUser);
+            }
+            else if (rahulEmployee != null && (!empUser.EmployeeId.HasValue || empUser.EmployeeId.Value == Guid.Empty))
+            {
+                empUser.LinkEmployee(rahulEmployee.Id);
+            }
+
+            // Seed Manager User account (Vivek Singh)
+            var vivekEmployee = await context.Employees.FirstOrDefaultAsync(e => e.FirstName.Contains("Vivek"));
+            var managerUser = await context.ApplicationUsers.FirstOrDefaultAsync(u => u.Email == "manager@example.com");
+            if (managerUser == null)
+            {
+                var passwordHash = passwordHasher.Hash("Manager@123456");
+                managerUser = new ApplicationUser(
+                    username: "Vivek Singh",
+                    email: "manager@example.com",
+                    passwordHash: passwordHash,
+                    role: "Manager",
+                    employeeId: vivekEmployee?.Id);
+
+                context.ApplicationUsers.Add(managerUser);
+            }
+            else if (vivekEmployee != null && (!managerUser.EmployeeId.HasValue || managerUser.EmployeeId.Value == Guid.Empty))
+            {
+                managerUser.LinkEmployee(vivekEmployee.Id);
+            }
+
+            // Auto-link any existing users without EmployeeId
+            var allUsers = await context.ApplicationUsers.ToListAsync();
+            var allEmps = await context.Employees.ToListAsync();
+            foreach (var u in allUsers.Where(u => !u.EmployeeId.HasValue))
+            {
+                var matched = allEmps.FirstOrDefault(e => e.Email.Equals(u.Email, StringComparison.OrdinalIgnoreCase) ||
+                                                          u.Username.Contains(e.FirstName, StringComparison.OrdinalIgnoreCase));
+                if (matched != null)
+                {
+                    u.LinkEmployee(matched.Id);
+                }
+            }
+
+            // Seed sample payslips for Rahul if none exist
+            if (rahulEmployee != null && !await context.Payslips.AnyAsync(p => p.EmployeeId == rahulEmployee.Id))
+            {
+                var curMonth = DateTime.UtcNow.Month;
+                var curYear = DateTime.UtcNow.Year;
+
+                // Last month payslip
+                var prevMonth = curMonth > 1 ? curMonth - 1 : 12;
+                var prevYear = curMonth > 1 ? curYear : curYear - 1;
+
+                var prevPayslip = Payslip.CreateDetailed(
+                    employeeId: rahulEmployee.Id,
+                    month: prevMonth,
+                    year: prevYear,
+                    basicSalary: 36000m,
+                    hra: 21600m,
+                    allowances: 14400m,
+                    bonusPay: 0m,
+                    overtimePay: 0m,
+                    pfDeduction: 4320m,
+                    esiDeduction: 540m,
+                    tdsDeduction: 3600m,
+                    reimbursementsAmount: 0m,
+                    workingDays: 30,
+                    presentDays: 28,
+                    paidLeaveDays: 2,
+                    unpaidLeaveDays: 0,
+                    status: "Paid",
+                    remarks: "Salary credited via Direct Bank Transfer"
+                );
+                context.Payslips.Add(prevPayslip);
+
+                // Current month payslip
+                var curPayslip = Payslip.CreateDetailed(
+                    employeeId: rahulEmployee.Id,
+                    month: curMonth,
+                    year: curYear,
+                    basicSalary: 36000m,
+                    hra: 21600m,
+                    allowances: 14400m,
+                    bonusPay: 5000m,
+                    overtimePay: 0m,
+                    pfDeduction: 4320m,
+                    esiDeduction: 540m,
+                    tdsDeduction: 4100m,
+                    reimbursementsAmount: 0m,
+                    workingDays: 30,
+                    presentDays: 30,
+                    paidLeaveDays: 0,
+                    unpaidLeaveDays: 0,
+                    status: "Paid",
+                    remarks: "Regular monthly payroll"
+                );
+                context.Payslips.Add(curPayslip);
+            }
+
+            // Seed sample assets for Rahul if none exist
+            if (rahulEmployee != null && !await context.AssetAssignments.AnyAsync(aa => aa.EmployeeId == rahulEmployee.Id))
+            {
+                var laptop = await context.Assets.FirstOrDefaultAsync(a => a.AssetName.Contains("MacBook") || a.AssetName.Contains("Dell") || a.AssetName.Contains("Laptop"));
+                if (laptop == null)
+                {
+                    laptop = new Asset("DELL-XPS-001", "Dell XPS 15 (Dev Workstation)", "Hardware", "DELL-XPS-2026-042", 145000m, new DateTime(2026, 1, 15));
+                    context.Assets.Add(laptop);
+                    await context.SaveChangesAsync();
+                }
+
+                var assignment = new AssetAssignment(rahulEmployee.Id, laptop.Id);
+                assignment.Notes = "Primary developer workstation with accessories";
+                context.AssetAssignments.Add(assignment);
+            }
+
+            // Seed sample reimbursement for Rahul if none exist
+            if (rahulEmployee != null && !await context.Reimbursements.AnyAsync(r => r.EmployeeId == rahulEmployee.Id))
+            {
+                var reimb = new Reimbursement(
+                    employeeId: rahulEmployee.Id,
+                    amount: 2450m,
+                    category: "Broadband",
+                    description: "High-speed home internet allowance for remote development",
+                    receiptUrl: null
+                );
+                reimb.Approve(Guid.NewGuid());
+                context.Reimbursements.Add(reimb);
+
+                var reimb2 = new Reimbursement(
+                    employeeId: rahulEmployee.Id,
+                    amount: 1800m,
+                    category: "Travel",
+                    description: "Client site technical discussion taxi fare",
+                    receiptUrl: null
+                );
+                context.Reimbursements.Add(reimb2);
+            }
+
+            // Seed sample tasks for Rahul if none exist
+            if (rahulEmployee != null && !await context.WorkTasks.AnyAsync(t => t.EmployeeId == rahulEmployee.Id))
+            {
+                var task1 = new WorkTask(
+                    title: "Employee Self-Service Optimization",
+                    description: "Enhance self-service dashboard widgets, payslip PDF download and leave tracking interface",
+                    employeeId: rahulEmployee.Id,
+                    departmentId: rahulEmployee.DepartmentId,
+                    managerId: rahulEmployee.ManagerId,
+                    priority: "High",
+                    startDateUtc: DateTime.UtcNow.AddDays(-3),
+                    deadlineUtc: DateTime.UtcNow.AddDays(5)
+                );
+                task1.UpdateProgress(70, "InProgress");
+                context.WorkTasks.Add(task1);
+
+                var task2 = new WorkTask(
+                    title: "API Authorization Audit",
+                    description: "Verify role-based permission checks and IDOR protection on all domain controllers",
+                    employeeId: rahulEmployee.Id,
+                    departmentId: rahulEmployee.DepartmentId,
+                    managerId: rahulEmployee.ManagerId,
+                    priority: "Medium",
+                    startDateUtc: DateTime.UtcNow.AddDays(-1),
+                    deadlineUtc: DateTime.UtcNow.AddDays(7)
+                );
+                task2.UpdateProgress(100, "Completed");
+                context.WorkTasks.Add(task2);
+            }
+
+            // Seed sample leave balances for Rahul
+            if (rahulEmployee != null && !await context.LeaveBalances.AnyAsync(lb => lb.EmployeeId == rahulEmployee.Id))
+            {
+                var leaveTypes = await context.LeaveTypes.ToListAsync();
+                var curYear = DateTime.UtcNow.Year;
+                foreach (var lt in leaveTypes)
+                {
+                    var used = lt.Name.Contains("Annual") ? 2 : (lt.Name.Contains("Sick") ? 1 : 0);
+                    context.LeaveBalances.Add(new LeaveBalance(rahulEmployee.Id, lt.Id, lt.DaysPerYear, used, curYear));
+                }
+            }
+
             await context.SaveChangesAsync();
             logger?.LogInformation("Database initialized and seed data successfully verified.");
         }

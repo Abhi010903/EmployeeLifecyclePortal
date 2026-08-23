@@ -1,5 +1,6 @@
 using EmployeeLifecyclePortal.Application.Authorization;
 using EmployeeLifecyclePortal.Application.Commands.Employees;
+using EmployeeLifecyclePortal.Application.Interfaces;
 using EmployeeLifecyclePortal.Application.Queries.Employees;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -13,10 +14,41 @@ namespace EmployeeLifecyclePortal.Api.Controllers;
 public sealed class EmployeesController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly ICurrentUserService _currentUserService;
+    private readonly IApplicationDbContext _context;
 
-    public EmployeesController(IMediator mediator)
+    public EmployeesController(
+        IMediator mediator,
+        ICurrentUserService currentUserService,
+        IApplicationDbContext context)
     {
         _mediator = mediator;
+        _currentUserService = currentUserService;
+        _context = context;
+    }
+
+    [HttpGet("me")]
+    public async Task<IActionResult> GetCurrentEmployeeProfile(
+        CancellationToken cancellationToken)
+    {
+        var empId = await _currentUserService.GetRequiredEmployeeIdAsync(_context, cancellationToken);
+        var result = await _mediator.Send(
+            new GetEmployeeProfileQuery(empId),
+            cancellationToken);
+
+        return Ok(result);
+    }
+
+    [HttpGet("me/timeline")]
+    public async Task<IActionResult> GetCurrentEmployeeTimeline(
+        CancellationToken cancellationToken)
+    {
+        var empId = await _currentUserService.GetRequiredEmployeeIdAsync(_context, cancellationToken);
+        var result = await _mediator.Send(
+            new GetEmployeeTimelineQuery(empId),
+            cancellationToken);
+
+        return Ok(result);
     }
 
     [HttpPost]
@@ -29,6 +61,7 @@ public sealed class EmployeesController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = Permissions.Manager)]
     public async Task<IActionResult> GetAllEmployees(
         [FromQuery] int? pageNumber,
         [FromQuery] int? pageSize,
@@ -46,6 +79,11 @@ public sealed class EmployeesController : ControllerBase
         Guid id,
         CancellationToken cancellationToken)
     {
+        if (!await _currentUserService.HasAccessToEmployeeAsync(id, _context, cancellationToken))
+        {
+            return Forbid();
+        }
+
         return Ok(await _mediator.Send(
             new GetEmployeeByIdQuery(id),
             cancellationToken));
@@ -56,6 +94,11 @@ public sealed class EmployeesController : ControllerBase
         Guid id,
         CancellationToken cancellationToken)
     {
+        if (!await _currentUserService.HasAccessToEmployeeAsync(id, _context, cancellationToken))
+        {
+            return Forbid();
+        }
+
         return Ok(await _mediator.Send(
             new GetEmployeeProfileQuery(id),
             cancellationToken));
@@ -66,6 +109,11 @@ public sealed class EmployeesController : ControllerBase
         Guid id,
         CancellationToken cancellationToken)
     {
+        if (!await _currentUserService.HasAccessToEmployeeAsync(id, _context, cancellationToken))
+        {
+            return Forbid();
+        }
+
         return Ok(await _mediator.Send(
             new GetEmployeeTimelineQuery(id),
             cancellationToken));
@@ -140,6 +188,11 @@ public sealed class EmployeesController : ControllerBase
         Guid id,
         CancellationToken cancellationToken)
     {
+        if (!await _currentUserService.HasAccessToEmployeeAsync(id, _context, cancellationToken))
+        {
+            return Forbid();
+        }
+
         return Ok(await _mediator.Send(
             new GetEmployeeRolesQuery(id),
             cancellationToken));

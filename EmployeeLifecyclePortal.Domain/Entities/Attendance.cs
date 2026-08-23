@@ -149,6 +149,17 @@ public class LeaveBalance : AuditableEntity
 
     private LeaveBalance() { }
 
+    public LeaveBalance(Guid employeeId, Guid leaveTypeId, int totalDays, int usedDays, int year)
+    {
+        Id = Guid.NewGuid();
+        EmployeeId = employeeId;
+        LeaveTypeId = leaveTypeId;
+        TotalDays = totalDays;
+        UsedDays = usedDays;
+        Year = year;
+        CreatedAtUtc = DateTime.UtcNow;
+    }
+
     public void UseLeave(int days)
     {
         UsedDays += days;

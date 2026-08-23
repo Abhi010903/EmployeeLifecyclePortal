@@ -21,33 +21,117 @@ import { useAuthStore } from '@/store/authStore'
 
 interface MenuItem {
   label: string
+  employeeLabel?: string
   icon: React.ReactNode
   path: string
   roles?: string[]
   badge?: string
   section?: string
+  employeeSection?: string
 }
 
 const menuItems: MenuItem[] = [
   // Core
-  { label: 'Dashboard', icon: <Home className="w-5 h-5" />, path: '/dashboard', section: 'Main' },
+  {
+    label: 'Dashboard',
+    employeeLabel: 'My Dashboard',
+    icon: <Home className="w-5 h-5" />,
+    path: '/dashboard',
+    section: 'Main',
+    employeeSection: 'Main',
+  },
 
-  // People & Workflows
-  { label: 'Employees', icon: <Users className="w-5 h-5" />, path: '/employees', section: 'People' },
-  { label: 'Departments', icon: <Briefcase className="w-5 h-5" />, path: '/departments', section: 'People' },
-  { label: 'Roles & Access', icon: <Shield className="w-5 h-5" />, path: '/roles', roles: ['Admin'], section: 'People' },
-  { label: 'Attendance', icon: <Clock className="w-5 h-5" />, path: '/attendance', section: 'Time & Attendance' },
-  { label: 'Leave Requests', icon: <FileText className="w-5 h-5" />, path: '/leave', section: 'Time & Attendance' },
+  // Organization (Admin / HR / Manager / Team Lead)
+  {
+    label: 'Employees',
+    icon: <Users className="w-5 h-5" />,
+    path: '/employees',
+    roles: ['Admin', 'HR', 'Manager', 'Team Lead', 'TeamLead'],
+    section: 'Organization',
+  },
+  {
+    label: 'Departments',
+    icon: <Briefcase className="w-5 h-5" />,
+    path: '/departments',
+    roles: ['Admin', 'HR', 'Manager', 'Team Lead', 'TeamLead'],
+    section: 'Organization',
+  },
+  {
+    label: 'Roles & Access',
+    icon: <Shield className="w-5 h-5" />,
+    path: '/roles',
+    roles: ['Admin'],
+    section: 'Organization',
+  },
 
-  // Finance & Operations
-  { label: 'Payroll & Salary', icon: <CreditCard className="w-5 h-5" />, path: '/payroll', section: 'Finance' },
-  { label: 'Performance', icon: <Trophy className="w-5 h-5" />, path: '/performance', section: 'Operations' },
-  { label: 'Company Assets', icon: <Package className="w-5 h-5" />, path: '/assets', section: 'Operations' },
-  { label: 'Recruitment', icon: <UserCheck className="w-5 h-5" />, path: '/recruitment', roles: ['Admin', 'HR', 'Manager', 'Team Lead', 'TeamLead'], section: 'Operations' },
+  // Time & Attendance
+  {
+    label: 'Attendance',
+    employeeLabel: 'My Attendance',
+    icon: <Clock className="w-5 h-5" />,
+    path: '/attendance',
+    section: 'Time & Attendance',
+    employeeSection: 'My Work',
+  },
+  {
+    label: 'Leave Requests',
+    employeeLabel: 'My Leave',
+    icon: <FileText className="w-5 h-5" />,
+    path: '/leave',
+    section: 'Time & Attendance',
+    employeeSection: 'My Work',
+  },
+
+  // Finance
+  {
+    label: 'Payroll Management',
+    employeeLabel: 'My Payroll & Payslips',
+    icon: <CreditCard className="w-5 h-5" />,
+    path: '/payroll',
+    section: 'Finance',
+    employeeSection: 'Finance',
+  },
+
+  // Performance & Assets
+  {
+    label: 'Performance',
+    employeeLabel: 'My Performance',
+    icon: <Trophy className="w-5 h-5" />,
+    path: '/performance',
+    section: 'Operations',
+    employeeSection: 'Development',
+  },
+  {
+    label: 'Company Assets',
+    employeeLabel: 'My Assets',
+    icon: <Package className="w-5 h-5" />,
+    path: '/assets',
+    section: 'Operations',
+    employeeSection: 'Resources',
+  },
+  {
+    label: 'Recruitment',
+    icon: <UserCheck className="w-5 h-5" />,
+    path: '/recruitment',
+    roles: ['Admin', 'HR', 'Manager', 'Team Lead', 'TeamLead'],
+    section: 'Operations',
+  },
 
   // Intelligence & Administration
-  { label: 'Analytics & Reports', icon: <BarChart3 className="w-5 h-5" />, path: '/reports', roles: ['Admin', 'HR', 'Manager'], section: 'Analytics' },
-  { label: 'Settings', icon: <Settings className="w-5 h-5" />, path: '/settings', roles: ['Admin'], section: 'System' },
+  {
+    label: 'Analytics & Reports',
+    icon: <BarChart3 className="w-5 h-5" />,
+    path: '/reports',
+    roles: ['Admin', 'HR', 'Manager'],
+    section: 'Analytics',
+  },
+  {
+    label: 'Settings',
+    icon: <Settings className="w-5 h-5" />,
+    path: '/settings',
+    roles: ['Admin'],
+    section: 'System',
+  },
 ]
 
 interface SidebarProps {
@@ -99,9 +183,9 @@ export default function Sidebar({
                 <Sparkles className="w-5 h-5" />
               </div>
               <div>
-                <span className="font-bold text-base text-white tracking-tight">Antigravity</span>
+                <span className="font-bold text-base text-white tracking-tight">Employee Lifecycle</span>
                 <span className="text-[10px] block font-semibold text-primary-400 -mt-0.5 tracking-wider uppercase">
-                  HRMS Portal
+                  Portal
                 </span>
               </div>
             </div>
@@ -133,19 +217,21 @@ export default function Sidebar({
         <nav className="p-3 space-y-1 flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800">
           {filteredItems.map((item) => {
             const isActive = location.pathname === item.path
-            const showSection = !isCollapsed && item.section && item.section !== lastSection
-            if (item.section) lastSection = item.section
+            const label = (user?.role === 'Employee' && item.employeeLabel) ? item.employeeLabel : item.label
+            const section = (user?.role === 'Employee' && item.employeeSection) ? item.employeeSection : item.section
+            const showSection = !isCollapsed && section && section !== lastSection
+            if (section) lastSection = section
 
             return (
               <div key={item.path}>
                 {showSection && (
                   <p className="text-[11px] uppercase tracking-wider font-bold text-slate-500 px-3 pt-3.5 pb-1">
-                    {item.section}
+                    {section}
                   </p>
                 )}
                 <Link
                   to={item.path}
-                  title={isCollapsed ? item.label : undefined}
+                  title={isCollapsed ? label : undefined}
                   onClick={onCloseMobile}
                   className={`group relative flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-150 text-sm font-medium ${
                     isActive
@@ -161,7 +247,7 @@ export default function Sidebar({
                     {item.icon}
                   </div>
                   {!isCollapsed && (
-                    <span className="flex-1 truncate">{item.label}</span>
+                    <span className="flex-1 truncate">{label}</span>
                   )}
                   {isActive && !isCollapsed && (
                     <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />

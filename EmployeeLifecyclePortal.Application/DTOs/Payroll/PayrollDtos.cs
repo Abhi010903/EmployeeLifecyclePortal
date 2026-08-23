@@ -114,3 +114,30 @@ public sealed class DepartmentPayrollDto
     public decimal TotalGross { get; set; }
     public decimal TotalNet { get; set; }
 }
+
+public sealed class EmployeePayrollSummaryDto
+{
+    public Guid EmployeeId { get; set; }
+    public string EmployeeName { get; set; } = string.Empty;
+    public string EmployeeCode { get; set; } = string.Empty;
+    public string DepartmentName { get; set; } = string.Empty;
+    public int Month { get; set; }
+    public int Year { get; set; }
+    public decimal GrossSalary { get; set; }
+    public decimal TotalDeductions { get; set; }
+    public decimal NetSalary { get; set; }
+    public decimal TotalReimbursements { get; set; }
+    public decimal BasicSalary { get; set; }
+    public decimal Hra { get; set; }
+    public decimal SpecialAllowance { get; set; }
+    public decimal ConveyanceAllowance { get; set; }
+    public decimal OvertimePay { get; set; }
+    public decimal BonusPay { get; set; }
+    public decimal PfDeduction { get; set; }
+    public decimal EsiDeduction { get; set; }
+    public decimal TdsDeduction { get; set; }
+    public decimal OtherDeductions { get; set; }
+    public PayslipDto? LatestPayslip { get; set; }
+    public List<PayslipDto> RecentPayslips { get; set; } = new();
+    public List<ReimbursementDto> Reimbursements { get; set; } = new();
+}

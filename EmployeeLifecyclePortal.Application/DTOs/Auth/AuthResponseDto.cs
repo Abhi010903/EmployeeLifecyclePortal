@@ -15,6 +15,10 @@ public sealed class UserDto
 {
     public Guid Id { get; set; }
 
+    public Guid? EmployeeId { get; set; }
+
+    public string? EmployeeCode { get; set; }
+
     public string Email { get; set; } = string.Empty;
 
     public string Role { get; set; } = string.Empty;

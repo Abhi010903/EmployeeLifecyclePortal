@@ -13,8 +13,13 @@ import toast from 'react-hot-toast'
 
 export default function AttendancePage() {
   const { user } = useAuthStore()
-  const userId = user?.id || localStorage.getItem('userId') || ''
-  const isAdmin = user?.role === 'Admin'
+  const isElevated =
+    user?.role === 'Admin' ||
+    user?.role === 'HR' ||
+    user?.role === 'Manager' ||
+    user?.role === 'Team Lead' ||
+    user?.role === 'TeamLead'
+  const isEmployeeOnly = !isElevated
 
   const [employees, setEmployees] = useState<Employee[]>([])
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('')
@@ -39,16 +44,21 @@ export default function AttendancePage() {
   const fetchAttendanceData = useCallback(async () => {
     try {
       setLoading(true)
-      const [todayRes, allRes] = await Promise.all([
-        attendanceApi.getToday(),
-        attendanceApi.getAll(),
-      ])
-
-      const todayList = Array.isArray(todayRes.data) ? todayRes.data : []
-      const allList = Array.isArray(allRes.data) ? allRes.data : []
-
-      setTodayRecords(todayList)
-      setAllRecords(allList)
+      if (isEmployeeOnly) {
+        const [todayRes, allRes] = await Promise.all([
+          attendanceApi.getMyToday(),
+          attendanceApi.getMyAttendance(),
+        ])
+        setTodayRecords(Array.isArray(todayRes.data) ? todayRes.data : [])
+        setAllRecords(Array.isArray(allRes.data) ? allRes.data : [])
+      } else {
+        const [todayRes, allRes] = await Promise.all([
+          attendanceApi.getToday(),
+          attendanceApi.getAll(),
+        ])
+        setTodayRecords(Array.isArray(todayRes.data) ? todayRes.data : [])
+        setAllRecords(Array.isArray(allRes.data) ? allRes.data : [])
+      }
       setError(null)
     } catch (err) {
       setError('Failed to load attendance records')
@@ -56,39 +66,42 @@ export default function AttendancePage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [isEmployeeOnly])
 
   useEffect(() => {
     fetchAttendanceData()
-    if (isAdmin) {
+    if (isElevated) {
       fetchEmployees()
-    } else if (userId) {
-      setSelectedEmployeeId(userId)
     }
-  }, [fetchAttendanceData, fetchEmployees, isAdmin, userId])
+  }, [fetchAttendanceData, fetchEmployees, isElevated])
 
-  // Determine active target employee (Admin can select; Manager/Employee uses self)
-  const effectiveEmployeeId = isAdmin ? selectedEmployeeId : (userId || selectedEmployeeId)
-
-  // Check if current target employee has an active unclosed session
+  // Check if active unclosed session exists
   const activeSessionForTarget = useMemo(() => {
-    if (!effectiveEmployeeId) return null
+    if (isEmployeeOnly) {
+      return todayRecords.find((r) => !r.checkOutTimeUtc)
+    }
+    if (!selectedEmployeeId) return null
     return todayRecords.find(
-      (r) => r.employeeId === effectiveEmployeeId && !r.checkOutTimeUtc
+      (r) => r.employeeId === selectedEmployeeId && !r.checkOutTimeUtc
     )
-  }, [todayRecords, effectiveEmployeeId])
+  }, [todayRecords, selectedEmployeeId, isEmployeeOnly])
 
-  const hasActiveCheckIn = !!activeSessionForTarget
+  const hasActiveCheckIn = isEmployeeOnly
+    ? todayRecords.some((r) => !r.checkOutTimeUtc)
+    : !!activeSessionForTarget
 
   const handleCheckIn = async () => {
-    if (!effectiveEmployeeId) {
-      toast.error('Please select an employee before checking in.')
-      return
-    }
-
     try {
       setLoading(true)
-      await attendanceApi.checkIn({ employeeId: effectiveEmployeeId })
+      if (isEmployeeOnly) {
+        await attendanceApi.checkIn({})
+      } else {
+        if (!selectedEmployeeId) {
+          toast.error('Please select an employee before checking in.')
+          return
+        }
+        await attendanceApi.checkIn({ employeeId: selectedEmployeeId })
+      }
       toast.success('Checked in successfully!')
       setError(null)
       await fetchAttendanceData()
@@ -102,17 +115,20 @@ export default function AttendancePage() {
   }
 
   const handleCheckOut = async () => {
-    if (!effectiveEmployeeId) {
-      toast.error('Please select an employee before checking out.')
-      return
-    }
-
     try {
       setLoading(true)
-      await attendanceApi.checkOut({
-        attendanceId: activeSessionForTarget?.id,
-        employeeId: effectiveEmployeeId,
-      })
+      if (isEmployeeOnly) {
+        await attendanceApi.checkOut()
+      } else {
+        if (!selectedEmployeeId) {
+          toast.error('Please select an employee before checking out.')
+          return
+        }
+        await attendanceApi.checkOut({
+          attendanceId: activeSessionForTarget?.id,
+          employeeId: selectedEmployeeId,
+        })
+      }
       toast.success('Checked out successfully!')
       setError(null)
       await fetchAttendanceData()
@@ -144,12 +160,18 @@ export default function AttendancePage() {
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-neutral-900">Attendance</h1>
-            <p className="text-neutral-600 mt-1">Track employee check-ins and check-outs (IST / Asia/Kolkata)</p>
+            <h1 className="text-3xl font-bold text-neutral-900">
+              {isEmployeeOnly ? 'My Attendance' : 'Attendance Management'}
+            </h1>
+            <p className="text-neutral-600 mt-1">
+              {isEmployeeOnly
+                ? 'Personal session check-ins, working hours, and monthly logs (IST / Asia/Kolkata)'
+                : 'Track organization check-ins, active work sessions, and daily hours (IST / Asia/Kolkata)'}
+            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            {isAdmin && (
+            {isElevated && (
               <div className="flex items-center gap-2">
                 <label className="text-sm font-medium text-neutral-700 whitespace-nowrap">
                   Employee:
@@ -172,7 +194,7 @@ export default function AttendancePage() {
             <div className="flex gap-2">
               <Button
                 onClick={handleCheckIn}
-                disabled={hasActiveCheckIn || loading || !effectiveEmployeeId}
+                disabled={hasActiveCheckIn || loading || (!isEmployeeOnly && !selectedEmployeeId)}
                 className="bg-green-600 hover:bg-green-700 cursor-pointer"
               >
                 <LogIn className="w-4 h-4 mr-2" />
@@ -180,7 +202,7 @@ export default function AttendancePage() {
               </Button>
               <Button
                 onClick={handleCheckOut}
-                disabled={!hasActiveCheckIn || loading || !effectiveEmployeeId}
+                disabled={!hasActiveCheckIn || loading || (!isEmployeeOnly && !selectedEmployeeId)}
                 className="bg-red-600 hover:bg-red-700 cursor-pointer"
               >
                 <LogOut className="w-4 h-4 mr-2" />

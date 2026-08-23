@@ -1,4 +1,5 @@
 using EmployeeLifecyclePortal.Application.DTOs.Attendance;
+using EmployeeLifecyclePortal.Application.Exceptions;
 using EmployeeLifecyclePortal.Application.Interfaces;
 using EmployeeLifecyclePortal.Domain.Entities;
 using MediatR;
@@ -40,19 +41,32 @@ public sealed class ApplyLeaveCommandHandler
 
         if (employee is null)
         {
-            // Check if request.EmployeeId is ApplicationUser.Id and match by email
+            // Check if request.EmployeeId is ApplicationUser.Id and match by email or employeeId link
             var appUser = await _context.ApplicationUsers
                 .FirstOrDefaultAsync(u => u.Id == request.EmployeeId, cancellationToken);
-            if (appUser != null)
+
+            if (appUser?.EmployeeId.HasValue == true && appUser.EmployeeId.Value != Guid.Empty)
             {
                 employee = await _context.Employees
-                    .FirstOrDefaultAsync(e => e.Email == appUser.Email, cancellationToken);
+                    .FirstOrDefaultAsync(e => e.Id == appUser.EmployeeId.Value, cancellationToken);
+            }
+
+            if (employee is null && appUser != null && !string.IsNullOrWhiteSpace(appUser.Email))
+            {
+                employee = await _context.Employees
+                    .FirstOrDefaultAsync(e => e.Email.ToLower() == appUser.Email.ToLower(), cancellationToken);
+
+                if (employee != null)
+                {
+                    appUser.LinkEmployee(employee.Id);
+                    await _context.SaveChangesAsync(cancellationToken);
+                }
             }
         }
 
         if (employee is null)
         {
-            throw new InvalidOperationException($"Employee with ID {request.EmployeeId} was not found.");
+            throw new NotFoundException("Employee profile could not be found. Please contact HR.");
         }
 
         var leaveType = await _context.LeaveTypes
@@ -60,7 +74,7 @@ public sealed class ApplyLeaveCommandHandler
 
         if (leaveType is null)
         {
-            throw new InvalidOperationException($"Leave type with ID {request.LeaveTypeId} was not found.");
+            throw new NotFoundException("Selected leave type could not be found. Please refresh and try again.");
         }
 
         var leaveRequest = LeaveRequest.CreateRequest(

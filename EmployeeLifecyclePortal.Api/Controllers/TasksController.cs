@@ -29,6 +29,19 @@ public sealed class TasksController : ControllerBase
         _context = context;
     }
 
+    [HttpGet("my")]
+    public async Task<IActionResult> GetMyTasks(
+        [FromQuery] string? status,
+        CancellationToken cancellationToken)
+    {
+        var empId = await _currentUserService.GetRequiredEmployeeIdAsync(_context, cancellationToken);
+        var result = await _mediator.Send(
+            new GetWorkTasksQuery(empId, null, status),
+            cancellationToken);
+
+        return Ok(result);
+    }
+
     [HttpGet]
     public async Task<IActionResult> GetTasks(
         [FromQuery] Guid? employeeId,
@@ -36,17 +49,16 @@ public sealed class TasksController : ControllerBase
         [FromQuery] string? status,
         CancellationToken cancellationToken)
     {
-        var role = _currentUserService.Role;
-        var userEmail = _currentUserService.Email;
+        var isElevated = _currentUserService.Role == "Admin" ||
+                         _currentUserService.Role == "HR" ||
+                         _currentUserService.Role == "Manager" ||
+                         _currentUserService.Role == "Team Lead" ||
+                         _currentUserService.Role == "TeamLead";
 
-        if (role == "Employee" && !string.IsNullOrEmpty(userEmail))
+        if (!isElevated)
         {
-            var emp = await _context.Employees
-                .FirstOrDefaultAsync(e => e.Email == userEmail, cancellationToken);
-            if (emp != null)
-            {
-                employeeId = emp.Id;
-            }
+            var empId = await _currentUserService.GetRequiredEmployeeIdAsync(_context, cancellationToken);
+            employeeId = empId;
         }
 
         var result = await _mediator.Send(
@@ -72,6 +84,15 @@ public sealed class TasksController : ControllerBase
         UpdateWorkTaskStatusCommand command,
         CancellationToken cancellationToken)
     {
+        var task = await _context.WorkTasks.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+        if (task == null)
+            return NotFound("Task not found.");
+
+        if (!await _currentUserService.HasAccessToEmployeeAsync(task.EmployeeId, _context, cancellationToken))
+        {
+            return Forbid();
+        }
+
         var result = await _mediator.Send(command with { Id = id }, cancellationToken);
         return Ok(result);
     }
